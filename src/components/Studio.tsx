@@ -16,11 +16,23 @@ export function Studio() {
     if (!state.analysis) void useStudioStore.getState().setSource(state.source, false);
   }, [state.analysis, state.source]);
   useEffect(() => {
-    if (!window.matchMedia("(max-width: 880px)").matches) return;
+    const mobile = window.matchMedia("(max-width: 880px)");
+    const closeDesktopPanels = (event?: MediaQueryListEvent) => {
+      if (!(event?.matches ?? mobile.matches)) return;
+      const current = useStudioStore.getState();
+      if (current.paletteOpen) current.togglePalette();
+      if (current.inspectorOpen) current.toggleInspector();
+    };
+    closeDesktopPanels();
+    mobile.addEventListener("change", closeDesktopPanels);
+    return () => mobile.removeEventListener("change", closeDesktopPanels);
+  }, []);
+
+  const closeMobilePanel = () => {
     const current = useStudioStore.getState();
     if (current.paletteOpen) current.togglePalette();
     if (current.inspectorOpen) current.toggleInspector();
-  }, []);
+  };
 
   return (
     <main
@@ -35,6 +47,14 @@ export function Studio() {
         </section>
         {state.inspectorOpen && <Inspector />}
       </div>
+      {(state.paletteOpen || state.inspectorOpen) && (
+        <button
+          className={`mobile-panel-scrim ${state.paletteOpen ? "after-palette" : "before-inspector"}`}
+          type="button"
+          aria-label="Close open panel"
+          onClick={closeMobilePanel}
+        />
+      )}
       <footer className="studio-statusbar">
         <span>
           {state.analysis?.stats.nodes ?? 0} nodes · {state.analysis?.stats.edges ?? 0} edges · {state.analysis?.stats.maxParallelism ?? 0}{" "}

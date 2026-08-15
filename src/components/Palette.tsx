@@ -1,4 +1,4 @@
-import { Boxes, ChevronDown, Combine, GitMerge, Layers3, Search, ShieldCheck } from "lucide-react";
+import { Boxes, ChevronDown, Combine, GitMerge, Layers3, Search, ShieldCheck, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { NODE_META, PALETTE_ORDER, ROLE_TEMPLATES } from "../lib/nodeMeta";
 import { useStudioStore } from "../store/useStudioStore";
@@ -8,6 +8,14 @@ export function Palette() {
   const addNode = useStudioStore((state) => state.addNode);
   const addRole = useStudioStore((state) => state.addRole);
   const addMacro = useStudioStore((state) => state.addMacro);
+  const selectedId = useStudioStore((state) => state.selectedNodeId);
+  const workflow = useStudioStore((state) => state.analysis?.normalized);
+  const selectNode = useStudioStore((state) => state.selectNode);
+  const activeGroup = useMemo(() => {
+    const selected = workflow?.spec.nodes.find((node) => node.id === selectedId);
+    if (selected?.kind === "group") return selected;
+    return workflow?.spec.nodes.find((node) => node.kind === "group" && node.config?.members?.includes(selectedId ?? ""));
+  }, [selectedId, workflow]);
   const groups = useMemo(() => {
     const normalized = query.toLowerCase().trim();
     return PALETTE_ORDER.filter(
@@ -24,13 +32,23 @@ export function Palette() {
     <aside className="palette panel" aria-label="Node and template palette">
       <div className="panel-title">
         <span>Library</span>
-        <small>click to add</small>
+        <small>{ROLE_TEMPLATES.length} agents</small>
       </div>
       <label className="search-field">
         <Search size={14} />
         <span className="sr-only">Search nodes and templates</span>
         <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search library" />
       </label>
+      {activeGroup && (
+        <div className="group-context">
+          <span>
+            Adding inside <strong>{activeGroup.name}</strong>
+          </span>
+          <button title="Leave group" aria-label="Leave group" onClick={() => selectNode(null)}>
+            <X size={13} />
+          </button>
+        </div>
+      )}
       <details open>
         <summary>
           Visual macros <ChevronDown size={13} />
@@ -56,6 +74,22 @@ export function Palette() {
       </details>
       <details open>
         <summary>
+          Agent templates · {roles.length} <ChevronDown size={13} />
+        </summary>
+        <div className="role-tree">
+          {roles.map((role) => (
+            <button key={role.name} onClick={() => void addRole(role.name)}>
+              <Boxes size={13} />
+              <span>
+                <small>{role.path}</small>
+                <strong>{role.name}</strong>
+              </span>
+            </button>
+          ))}
+        </div>
+      </details>
+      <details open>
+        <summary>
           Primitives <ChevronDown size={13} />
         </summary>
         <div className="palette-list">
@@ -71,22 +105,6 @@ export function Palette() {
               </button>
             );
           })}
-        </div>
-      </details>
-      <details open>
-        <summary>
-          Agent templates <ChevronDown size={13} />
-        </summary>
-        <div className="role-tree">
-          {roles.map((role) => (
-            <button key={role.name} onClick={() => void addRole(role.name)}>
-              <Boxes size={13} />
-              <span>
-                <small>{role.path}</small>
-                <strong>{role.name}</strong>
-              </span>
-            </button>
-          ))}
         </div>
       </details>
       <div className="palette-foot">

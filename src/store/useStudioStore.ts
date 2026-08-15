@@ -1,7 +1,7 @@
 import { parseDocument } from "yaml";
 import { create } from "zustand";
 import { compiler } from "../compiler/client";
-import { autoLayout } from "../lib/layout";
+import { autoLayout, groupMemberPosition } from "../lib/layout";
 import { defaultNode, ROLE_TEMPLATES } from "../lib/nodeMeta";
 import { requestPersistentStorage, saveProject } from "../lib/persistence";
 import { BLANK_WORKFLOW, WORKFLOW_TEMPLATES } from "../lib/templates";
@@ -210,18 +210,47 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   patchNode: async (id, patch) => {
     const workflow = parseWorkflow(get().source);
     const index = workflow?.spec.nodes.findIndex((node) => node.id === id) ?? -1;
-    if (index < 0) return;
+    if (!workflow || index < 0) return;
     let source = get().source;
     Object.entries(patch).forEach(([key, value]) => {
       source = patchYaml(source, ["spec", "nodes", index, key], value);
     });
+    const group = workflow.spec.nodes[index];
+    if (group?.kind === "group" && patch.config) {
+      const nextGroup = { ...group, ...patch, config: { ...group.config, ...patch.config } };
+      const groupPosition = group.position ?? { x: 0, y: 0 };
+      const nodes = workflow.spec.nodes.map((node) => {
+        const memberIndex = nextGroup.config?.members?.indexOf(node.id) ?? -1;
+        if (memberIndex < 0) return node.id === id ? nextGroup : node;
+        const relative = groupMemberPosition(nextGroup, memberIndex);
+        return { ...node, position: { x: groupPosition.x + relative.x, y: groupPosition.y + relative.y } };
+      });
+      source = patchYaml(source, ["spec", "nodes"], nodes);
+    }
     await get().setSource(source);
   },
   addNode: async (kind) => {
     const workflow = parseWorkflow(get().source);
     if (!workflow) return;
     const node = defaultNode(kind, workflow.spec.nodes.length + 1);
-    const source = patchYaml(get().source, ["spec", "nodes"], [...workflow.spec.nodes, node]);
+    const selected = workflow.spec.nodes.find((candidate) => candidate.id === get().selectedNodeId);
+    const activeGroup =
+      kind === "group"
+        ? undefined
+        : selected?.kind === "group"
+          ? selected
+          : workflow.spec.nodes.find((candidate) => candidate.kind === "group" && candidate.config?.members?.includes(selected?.id ?? ""));
+    let nodes = [...workflow.spec.nodes, node];
+    if (activeGroup) {
+      const members = [...(activeGroup.config?.members ?? []), node.id];
+      const relative = groupMemberPosition(activeGroup, members.length - 1);
+      const groupPosition = activeGroup.position ?? { x: 0, y: 0 };
+      node.position = { x: groupPosition.x + relative.x, y: groupPosition.y + relative.y };
+      nodes = nodes.map((candidate) =>
+        candidate.id === activeGroup.id ? { ...candidate, config: { ...candidate.config, members } } : candidate,
+      );
+    }
+    const source = patchYaml(get().source, ["spec", "nodes"], nodes);
     set({ selectedNodeId: node.id });
     await get().setSource(source);
   },
@@ -233,7 +262,13 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     node.name = role.name;
     node.role = role.role;
     node.prompt = role.prompt;
-    node.capabilities = { skills: [...role.skills], tools: [...role.tools], permissions: ["read-only"] };
+    node.capabilities = {
+      skills: [...role.skills],
+      tools: [...role.tools],
+      connectors: [...(role.connectors ?? [])],
+      permissions: [...(role.permissions ?? ["read-only"])],
+      customizations: {},
+    };
     const source = patchYaml(get().source, ["spec", "nodes"], [...workflow.spec.nodes, node]);
     set({ selectedNodeId: node.id });
     await get().setSource(source);

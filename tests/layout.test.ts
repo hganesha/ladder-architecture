@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { autoLayout, GRID_LAYOUT } from "../src/lib/layout";
+import { autoLayout, GRID_LAYOUT, groupDimensions } from "../src/lib/layout";
 import type { LgirEdge, LgirNode } from "../src/types";
 
 const nodes: LgirNode[] = [
@@ -46,5 +46,36 @@ describe("grid auto-layout", () => {
       expect((position?.x ?? 0) % 25).toBe(0);
       expect((position?.y ?? 0) % 25).toBe(0);
     }
+  });
+
+  it("places grouped children inside their visual bounding box", () => {
+    const grouped: LgirNode[] = [
+      { id: "input", kind: "input", name: "Input" },
+      {
+        id: "group",
+        kind: "group",
+        name: "Parallel group",
+        config: { members: ["design", "architecture"], execution: "parallel", exit: "aggregate" },
+      },
+      { id: "design", kind: "agent", name: "Design" },
+      { id: "architecture", kind: "agent", name: "Architecture" },
+      { id: "output", kind: "output", name: "Output" },
+    ];
+    const groupedEdges: LgirEdge[] = [
+      { id: "e1", from: "input", to: "group", kind: "data" },
+      { id: "e2", from: "group", to: "output", kind: "data" },
+    ];
+    const result = new Map(autoLayout(grouped, groupedEdges).map((node) => [node.id, node]));
+    const group = result.get("group");
+    const dimensions = groupDimensions(grouped[1]);
+    if (!group?.position) throw new Error("Group layout is missing a position.");
+    for (const id of ["design", "architecture"]) {
+      const position = result.get(id)?.position;
+      expect(position?.x).toBeGreaterThan(group.position.x);
+      expect(position?.y).toBeGreaterThan(group.position.y);
+      expect((position?.x ?? 0) + GRID_LAYOUT.nodeWidth).toBeLessThan(group.position.x + dimensions.width);
+      expect((position?.y ?? 0) + GRID_LAYOUT.nodeHeight).toBeLessThan(group.position.y + dimensions.height);
+    }
+    expect(result.get("output")?.position?.x ?? 0).toBeGreaterThan(group.position.x + dimensions.width);
   });
 });

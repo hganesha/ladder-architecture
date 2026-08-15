@@ -36,6 +36,41 @@ describe("LGIR fallback compiler", () => {
     expect(result.diagnostics).toEqual(expect.arrayContaining([expect.objectContaining({ code: "LG150" })]));
   });
 
+  it("schedules grouped members inside the group boundary before downstream work", async () => {
+    const workflow = parse(WORKFLOW_TEMPLATES[1].yaml) as Workflow;
+    const output = workflow.spec.nodes.find((node) => node.kind === "output");
+    const members = workflow.spec.nodes.filter((node) => node.kind === "agent").slice(0, 2);
+    if (!output || members.length < 2) throw new Error("The group fixture requires two agents and an output.");
+    const group = {
+      id: "implementation-group",
+      kind: "group" as const,
+      name: "Implementation group",
+      config: { members: members.map((node) => node.id), execution: "parallel" as const, exit: "aggregate" as const },
+    };
+    workflow.spec.nodes.push(group);
+    workflow.spec.edges = workflow.spec.edges.filter((edge) => !members.some((member) => edge.from === member.id || edge.to === member.id));
+    workflow.spec.edges.push({ id: "group-exit", from: group.id, to: output.id, kind: "data" });
+
+    const result = await analyzeFallback(stringify(workflow));
+    expect(result.ok).toBe(true);
+    expect(result.nodeOrder.indexOf(group.id)).toBeLessThan(result.nodeOrder.indexOf(members[0].id));
+    expect(result.nodeOrder.indexOf(group.id)).toBeLessThan(result.nodeOrder.indexOf(members[1].id));
+    expect(result.nodeOrder.indexOf(members[0].id)).toBeLessThan(result.nodeOrder.indexOf(output.id));
+    expect(result.nodeOrder.indexOf(members[1].id)).toBeLessThan(result.nodeOrder.indexOf(output.id));
+  });
+
+  it("rejects a group that references a missing member", async () => {
+    const workflow = parse(WORKFLOW_TEMPLATES[0].yaml) as Workflow;
+    workflow.spec.nodes.push({
+      id: "broken-group",
+      kind: "group",
+      name: "Broken group",
+      config: { members: ["missing"], execution: "sequential", exit: "serialize" },
+    });
+    const result = await analyzeFallback(stringify(workflow));
+    expect(result.diagnostics).toEqual(expect.arrayContaining([expect.objectContaining({ code: "LG129" })]));
+  });
+
   it("compiles deterministic, target-specific Markdown", async () => {
     const source = WORKFLOW_TEMPLATES[2].yaml;
     const [codexOne, codexTwo, claude] = await Promise.all([
@@ -51,6 +86,34 @@ describe("LGIR fallback compiler", () => {
     expect(claude.content).toContain("ladder-target: claude");
   });
 
+  it("compiles a Hermes Agent SKILL.md workflow with declarative connectors", async () => {
+    const workflow = parse(WORKFLOW_TEMPLATES[2].yaml) as Workflow;
+    const agent = workflow.spec.nodes.find((node) => node.kind === "agent");
+    if (!agent) throw new Error("The Hermes fixture requires an agent node.");
+    agent.capabilities = {
+      ...agent.capabilities,
+      skills: ["hermes-agent", "research"],
+      connectors: ["hermes:toolset:web", "mcp:github", "provider:openrouter"],
+    };
+
+    const first = await compileFallback(stringify(workflow), "hermes");
+    const second = await compileFallback(stringify(workflow), "hermes");
+
+    expect(first.ok).toBe(true);
+    expect(first.content).toBe(second.content);
+    expect(first.suggestedFilename).toMatch(/\.hermes\.md$/);
+    expect(first.adapterVersion).toBe("hermes-skill-v1");
+    expect(first.content).toContain("ladder-target: hermes");
+    expect(first.content).toContain("metadata:\n  hermes:");
+    const frontmatter = parse(first.content.split("---")[1]) as { description: string };
+    expect(frontmatter.description.length).toBeLessThanOrEqual(60);
+    expect(frontmatter.description.endsWith(".")).toBe(true);
+    expect(first.content).toContain("~/.hermes/skills/ladder-graph/");
+    expect(first.content).toContain("hermes:toolset:web, mcp:github, provider:openrouter");
+    expect(first.content).toContain("never place provider credentials in this skill");
+    expect(first.capabilityReport.native).toContain("Hermes Agent SKILL.md metadata");
+  });
+
   it("preserves declarative connectors in target output", async () => {
     const workflow = parse(WORKFLOW_TEMPLATES[2].yaml) as Workflow;
     const agent = workflow.spec.nodes.find((node) => node.kind === "agent");
@@ -63,6 +126,42 @@ describe("LGIR fallback compiler", () => {
     expect(result.content).toContain(".agents/skills/");
     expect(result.diagnostics).toEqual(expect.arrayContaining([expect.objectContaining({ code: "LG201" })]));
     expect(result.capabilityReport.instructional).toContain("declared connector availability");
+  });
+
+  it("compiles deterministic Python and TypeScript data modules", async () => {
+    const workflow = parse(WORKFLOW_TEMPLATES[2].yaml) as Workflow;
+    const agent = workflow.spec.nodes.find((node) => node.kind === "agent");
+    if (!agent) throw new Error("The code target fixture requires an agent node.");
+    agent.capabilities = {
+      ...agent.capabilities,
+      skills: ["research"],
+      connectors: ["custom:evidence-store"],
+      customizations: {
+        research: { template: "research", instructions: "Require two independent primary sources." },
+        "custom:evidence-store": {
+          template: "custom-connector",
+          instructions: "Read evidence snapshots through the host-provided adapter only.",
+        },
+      },
+    };
+    const source = stringify(workflow);
+    const [pythonOne, pythonTwo, typescript] = await Promise.all([
+      compileFallback(source, "python"),
+      compileFallback(source, "python"),
+      compileFallback(source, "typescript"),
+    ]);
+
+    expect(pythonOne.ok).toBe(true);
+    expect(pythonOne.content).toBe(pythonTwo.content);
+    expect(pythonOne.suggestedFilename).toMatch(/\.ladder\.py$/);
+    expect(pythonOne.mimeType).toBe("text/x-python");
+    expect(pythonOne.content).toContain("def ready_nodes");
+    expect(pythonOne.content).toContain("custom:evidence-store");
+    expect(typescript.suggestedFilename).toMatch(/\.ladder\.ts$/);
+    expect(typescript.mimeType).toBe("text/typescript");
+    expect(typescript.content).toContain("export function readyNodes");
+    expect(typescript.content).toContain("Require two independent primary sources.");
+    expect(typescript.capabilityReport.native).toContain("capability templates");
   });
 
   it("formats valid YAML and blocks aliases", async () => {

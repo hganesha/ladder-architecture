@@ -1,5 +1,7 @@
 import type { NodeKind } from "../types";
 
+export { ROLE_TEMPLATES } from "./roleTemplates";
+
 export const NODE_META: Record<NodeKind, { label: string; hint: string; color: string; category: string }> = {
   input: { label: "Input", hint: "Workflow objective and typed inputs", color: "#54d7cf", category: "Flow" },
   output: { label: "Output", hint: "Final completion contract", color: "#e8e0d0", category: "Flow" },
@@ -11,6 +13,7 @@ export const NODE_META: Record<NodeKind, { label: string; hint: string; color: s
   approval: { label: "Approval", hint: "Pause for explicit user consent", color: "#f0cb76", category: "Control" },
   join: { label: "Join", hint: "Wait for parallel branches", color: "#3ecf8e", category: "Control" },
   loop: { label: "Loop", hint: "Bounded structured revision", color: "#e879a9", category: "Control" },
+  group: { label: "Group", hint: "Bounded sequential or parallel phase", color: "#62b6e7", category: "Flow" },
   subgraph: { label: "Subgraph", hint: "Named collapsible phase", color: "#8391a6", category: "Flow" },
 };
 
@@ -24,79 +27,10 @@ export const PALETTE_ORDER: NodeKind[] = [
   "approval",
   "join",
   "loop",
+  "group",
   "subgraph",
   "output",
 ];
-
-export const ROLE_TEMPLATES = [
-  {
-    path: "core/software",
-    name: "Implementer",
-    role: "Senior software engineer",
-    prompt:
-      "Implement the requested change within scope. Preserve existing behavior, verify the result, and report changed files and residual risks.",
-    skills: ["repository-navigation", "implementation"],
-    tools: ["read", "edit", "test"],
-  },
-  {
-    path: "core/software",
-    name: "Test engineer",
-    role: "Independent test engineer",
-    prompt: "Derive high-risk test cases from the contract, exercise the implementation, and return failures with reproducible evidence.",
-    skills: ["test-design"],
-    tools: ["read", "test"],
-  },
-  {
-    path: "core/research",
-    name: "Researcher",
-    role: "Evidence-focused researcher",
-    prompt:
-      "Investigate the question using primary evidence. Separate observed facts, inferences, and unknowns; return citations when available.",
-    skills: ["research"],
-    tools: ["search", "read"],
-  },
-  {
-    path: "core/quality",
-    name: "Critic / evaluator",
-    role: "Adversarial quality evaluator",
-    prompt:
-      "Evaluate the candidate against the stated contract. Return a score, concrete defects, evidence, and the smallest revision that would pass.",
-    skills: ["evaluation"],
-    tools: ["read"],
-  },
-  {
-    path: "core/product",
-    name: "Product manager",
-    role: "Product manager",
-    prompt: "Translate the objective into user value, constraints, acceptance criteria, sequencing, and explicit tradeoffs.",
-    skills: ["product-management"],
-    tools: ["read"],
-  },
-  {
-    path: "core/product",
-    name: "Designer",
-    role: "Product designer",
-    prompt: "Improve the workflow from the user's point of view. Identify hierarchy, comprehension, accessibility, and interaction risks.",
-    skills: ["product-design"],
-    tools: ["read"],
-  },
-  {
-    path: "core/market",
-    name: "GTM specialist",
-    role: "Go-to-market strategist",
-    prompt: "Define the beachhead user, urgent problem, message, proof, channel, and measurable launch experiment.",
-    skills: ["go-to-market"],
-    tools: ["read", "search"],
-  },
-  {
-    path: "core/security",
-    name: "Security reviewer",
-    role: "Security and privacy reviewer",
-    prompt: "Threat-model the proposed work. Identify trust boundaries, abuse paths, sensitive data, and mitigations ranked by severity.",
-    skills: ["threat-modeling"],
-    tools: ["read"],
-  },
-] as const;
 
 export function defaultNode(kind: NodeKind, index: number): import("../types").LgirNode {
   const meta = NODE_META[kind];
@@ -106,7 +40,7 @@ export function defaultNode(kind: NodeKind, index: number): import("../types").L
     kind,
     name: meta.label,
     summary: meta.hint,
-    capabilities: { skills: [], tools: [], connectors: [], permissions: [] },
+    capabilities: { skills: [], tools: [], connectors: [], permissions: [], customizations: {} },
     config: {},
     position: { x: 220 + (index % 3) * 280, y: 120 + Math.floor(index / 3) * 190 },
   };
@@ -136,5 +70,12 @@ export function defaultNode(kind: NodeKind, index: number): import("../types").L
     };
   if (kind === "join") base.config = { join: "all" };
   if (kind === "loop") base.config = { body: [], exitCondition: "evaluation.passed == true", maxIterations: 3, onExhausted: "stop" };
+  if (kind === "group") {
+    base.name = "Execution group";
+    base.summary = "Route one input through a bounded parallel phase and aggregate every member output.";
+    base.config = { members: [], execution: "parallel", exit: "aggregate" };
+    const position = base.position ?? { x: 220, y: 120 };
+    base.position = { ...position, y: position.y + 75 };
+  }
   return base;
 }

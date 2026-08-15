@@ -8,7 +8,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: "prompt",
+      registerType: "autoUpdate",
       includeAssets: ["schema/lgir-v1alpha1.schema.json"],
       manifest: {
         name: "Ladder Graph",

@@ -1,4 +1,4 @@
-export type Target = "codex" | "claude";
+export type Target = "codex" | "claude" | "hermes" | "python" | "typescript";
 export type Severity = "error" | "warning" | "info";
 export type NodeKind =
   | "input"
@@ -11,6 +11,7 @@ export type NodeKind =
   | "approval"
   | "join"
   | "loop"
+  | "group"
   | "subgraph";
 
 export type EdgeKind = "data" | "dependency" | "control";
@@ -35,6 +36,9 @@ export interface NodeConfig {
   maxIterations?: number;
   onExhausted?: "stop" | "continue" | "warn" | "";
   threshold?: number;
+  members?: string[];
+  execution?: "sequential" | "parallel" | "";
+  exit?: "aggregate" | "serialize" | "";
 }
 
 export interface Capabilities {
@@ -42,6 +46,12 @@ export interface Capabilities {
   tools: string[];
   connectors: string[];
   permissions: string[];
+  customizations: Record<string, CapabilityCustomization>;
+}
+
+export interface CapabilityCustomization {
+  template: string;
+  instructions: string;
 }
 
 export interface LgirNode {

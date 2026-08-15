@@ -2,7 +2,7 @@
 
 ## Decision to validate
 
-Can a developer understand a non-trivial agent workflow, repair its unsafe control structure, interpret target limitations, and produce a usable Codex or Claude workflow without learning an orchestration framework?
+Can a developer understand a non-trivial agent workflow, repair its unsafe control structure, interpret target limitations, and produce a usable instructional or deterministic-code artifact without learning an orchestration framework?
 
 ## Moderated comprehension study
 
@@ -24,7 +24,7 @@ Pass criteria: at least four of five complete all tasks within ten minutes witho
 | Layer | Required evidence |
 | --- | --- |
 | Rust core | Unit coverage for valid LGIR, duplicates, endpoints, cycles, loop bounds, transforms, migrations, and deterministic compilation. |
-| Adapter fixtures | Codex and Claude output is byte-identical over repeated compiles; target metadata and capability states are present. |
+| Adapter fixtures | Codex, Claude, Hermes Agent, Python, and TypeScript output is byte-identical over repeated compiles; filenames, MIME types, target metadata, template customizations, and capability states are present. |
 | TypeScript parity | Bundled templates produce equivalent validity, diagnostic codes, order, and capability states in fallback and WebAssembly paths. |
 | Studio | Tests cover templates, editing, diagnostics, safe fixes, target selection, copy/download, undo/redo, and persistence recovery. |
 | Browser journey | Chromium, Firefox, and WebKit cover template → edit → failure → repair → compile → copy/download → reload → offline recovery. |
@@ -42,7 +42,8 @@ Pass criteria: at least four of five complete all tasks within ten minutes witho
 - Verify Parallel, Pipeline, Reduce, and Verify macros insert canonical structures.
 - Confirm every visible primary control is keyboard reachable with a visible focus indicator.
 - Confirm errors have icon/text treatment and do not rely on color.
-- Compile every bundled template for both targets.
+- Compile every bundled template for all five targets.
+- Import generated Python modules, type-check generated TypeScript modules, and confirm readiness helpers preserve compiler order.
 - Confirm no network request, credential prompt, provider SDK, telemetry endpoint, or executable content path exists.
 
 ## Launch feedback

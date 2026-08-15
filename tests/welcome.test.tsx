@@ -24,7 +24,8 @@ describe("welcome gallery", () => {
     useStudioStore.setState({ openTemplate });
     render(<Welcome onBlank={() => undefined} />);
     expect(screen.getByRole("heading", { name: "Starter workflows" })).toBeInTheDocument();
-    expect(screen.getAllByRole("tab")).toHaveLength(7);
+    expect(screen.getByText(`${WORKFLOW_TEMPLATES.length} workflows across 9 areas`, { exact: false })).toBeInTheDocument();
+    expect(screen.getAllByRole("tab")).toHaveLength(9);
     expect(screen.getByRole("tab", { name: "Core patterns" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getAllByRole("button", { name: /open .* in studio/i })).toHaveLength(1);
     fireEvent.click(screen.getByRole("tab", { name: "Software engineering" }));
@@ -39,6 +40,16 @@ describe("welcome gallery", () => {
     render(<Welcome onBlank={() => undefined} />);
     expect(screen.getByText(/no account/i)).toBeInTheDocument();
     expect(screen.getByText(/never runs agents/i)).toBeInTheDocument();
+  });
+
+  it("exposes the new multimodal and architecture workflow areas", () => {
+    render(<Welcome onBlank={() => undefined} />);
+
+    fireEvent.click(screen.getByRole("tab", { name: "Multimodal" }));
+    expect(screen.getByRole("button", { name: /open multimodal asset production in studio/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Architecture & design" }));
+    expect(screen.getByRole("button", { name: /open coordinated building design in studio/i })).toBeInTheDocument();
   });
 
   it("switches themes and remembers the choice", () => {

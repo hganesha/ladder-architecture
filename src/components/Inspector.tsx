@@ -2,10 +2,16 @@ import { Braces, Cable, Check, FileInput, Plug, Plus, Search, Settings2, Sparkle
 import { useEffect, useMemo, useState } from "react";
 import { type CapabilityOption, recommendedCapabilities, TARGET_CAPABILITY_CATALOGS } from "../lib/capabilityCatalog";
 import { useStudioStore } from "../store/useStudioStore";
-import type { LgirNode } from "../types";
+import type { CapabilityCustomization, LgirNode } from "../types";
 
 type FormNode = LgirNode & {
-  capabilities: { skills: string[]; tools: string[]; connectors: string[]; permissions: string[] };
+  capabilities: {
+    skills: string[];
+    tools: string[];
+    connectors: string[];
+    permissions: string[];
+    customizations: Record<string, CapabilityCustomization>;
+  };
   config: NonNullable<LgirNode["config"]>;
 };
 
@@ -17,6 +23,7 @@ function normalized(node: LgirNode): FormNode {
       tools: node.capabilities?.tools ?? [],
       connectors: node.capabilities?.connectors ?? [],
       permissions: node.capabilities?.permissions ?? [],
+      customizations: node.capabilities?.customizations ?? {},
     },
     config: node.config ?? {},
   };
@@ -62,7 +69,34 @@ export function Inspector() {
   const catalog = TARGET_CAPABILITY_CATALOGS[target];
   const recommendations = recommendedCapabilities(target, draft);
   const updateCapability = (key: "skills" | "connectors", value: string[]) => {
-    const capabilities = { ...draft.capabilities, [key]: value };
+    const previous = new Set(draft.capabilities[key]);
+    const next = new Set(value);
+    const options = key === "skills" ? catalog.skills : catalog.connectors;
+    const customizations = { ...draft.capabilities.customizations };
+    value.forEach((id) => {
+      if (previous.has(id) || customizations[id]) return;
+      const template = options.find((option) => option.id === id);
+      customizations[id] = {
+        template: template?.id ?? (key === "skills" ? "custom-skill" : "custom-connector"),
+        instructions:
+          template?.description ??
+          (key === "skills"
+            ? "Apply this named skill only within the node contract and return its declared output."
+            : "Use this connector only when explicitly provided by the host and never broaden its permissions."),
+      };
+    });
+    previous.forEach((id) => {
+      if (!next.has(id)) delete customizations[id];
+    });
+    const capabilities = { ...draft.capabilities, [key]: value, customizations };
+    setDraft({ ...draft, capabilities });
+    commit({ capabilities });
+  };
+  const updateCustomization = (id: string, customization: CapabilityCustomization) => {
+    const capabilities = {
+      ...draft.capabilities,
+      customizations: { ...draft.capabilities.customizations, [id]: customization },
+    };
     setDraft({ ...draft, capabilities });
     commit({ capabilities });
   };
@@ -140,10 +174,12 @@ export function Inspector() {
           <>
             <div className="harness-capability-card">
               <div>
-                <span>Harness catalog</span>
+                <span>Target catalog</span>
                 <strong>{catalog.label}</strong>
               </div>
               <p>
+                {catalog.artifactDescription}
+                <br />
                 Skills from <code>{catalog.skillLocation}</code>
                 <br />
                 {catalog.connectorLocation}
@@ -167,6 +203,14 @@ export function Inspector() {
               onChange={(value) => updateCapability("connectors", value)}
               placeholder="Add connector or MCP ID"
             />
+            <CapabilityCustomizations
+              skills={draft.capabilities.skills}
+              connectors={draft.capabilities.connectors}
+              values={draft.capabilities.customizations}
+              skillTemplates={catalog.skills}
+              connectorTemplates={catalog.connectors}
+              onChange={updateCustomization}
+            />
             <ListField
               label="Primitive tools"
               value={draft.capabilities.tools}
@@ -178,14 +222,90 @@ export function Inspector() {
               onCommit={(value) => commit({ capabilities: { ...draft.capabilities, permissions: value } })}
             />
             <div className="callout">
-              <strong>No ambient authority</strong>
-              <span>Catalog entries are suggestions, not detected installations. Ladder Graph never grants or invokes them.</span>
+              <strong>{target === "python" || target === "typescript" ? "Deterministic declaration" : "No ambient authority"}</strong>
+              <span>
+                Templates and custom instructions are embedded in the artifact. Ladder Graph never installs, grants, imports, or invokes
+                them.
+              </span>
             </div>
           </>
         )}
         {tab === "advanced" && <Advanced node={draft} setNode={setDraft} commit={commit} />}
       </div>
     </aside>
+  );
+}
+
+function CapabilityCustomizations({
+  skills,
+  connectors,
+  values,
+  skillTemplates,
+  connectorTemplates,
+  onChange,
+}: {
+  skills: string[];
+  connectors: string[];
+  values: Record<string, CapabilityCustomization>;
+  skillTemplates: CapabilityOption[];
+  connectorTemplates: CapabilityOption[];
+  onChange: (id: string, value: CapabilityCustomization) => void;
+}) {
+  const items = [
+    ...skills.map((id) => ({ id, kind: "skill" as const, templates: skillTemplates })),
+    ...connectors.map((id) => ({ id, kind: "connector" as const, templates: connectorTemplates })),
+  ];
+  if (!items.length) return null;
+  return (
+    <section className="capability-customizations" aria-labelledby="capability-customizations-title">
+      <div className="capability-picker-title">
+        <span id="capability-customizations-title">
+          <Settings2 size={14} /> Template customizations
+        </span>
+        <small>{items.length} available</small>
+      </div>
+      <p>Every selection resolves to a base template plus node-specific instructions.</p>
+      {items.map(({ id, kind, templates }) => {
+        const option = templates.find((candidate) => candidate.id === id);
+        const value =
+          values[id] ??
+          ({
+            template: option?.id ?? (kind === "skill" ? "custom-skill" : "custom-connector"),
+            instructions:
+              option?.description ??
+              (kind === "skill"
+                ? "Apply this named skill only within the node contract and return its declared output."
+                : "Use this connector only when explicitly provided by the host and never broaden its permissions."),
+          } satisfies CapabilityCustomization);
+        return (
+          <details key={`${kind}-${id}`}>
+            <summary>
+              <span>{option?.label ?? id}</span>
+              <code>{value.template}</code>
+            </summary>
+            <label>
+              Base template
+              <select value={value.template} onChange={(event) => onChange(id, { ...value, template: event.target.value })}>
+                <option value={kind === "skill" ? "custom-skill" : "custom-connector"}>Custom {kind} contract</option>
+                {templates.map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Customized instructions
+              <textarea
+                rows={4}
+                value={value.instructions}
+                onChange={(event) => onChange(id, { ...value, instructions: event.target.value })}
+              />
+            </label>
+          </details>
+        );
+      })}
+    </section>
   );
 }
 
@@ -428,6 +548,44 @@ function Advanced({
             <option value="first">First result</option>
           </select>
         </Field>
+      )}
+      {node.kind === "group" && (
+        <>
+          <Field label="Execution mode">
+            <select
+              value={node.config.execution ?? "parallel"}
+              onChange={(event) => commit({ config: { ...node.config, execution: event.target.value as "parallel" | "sequential" } })}
+            >
+              <option value="parallel">Parallel</option>
+              <option value="sequential">Sequential</option>
+            </select>
+          </Field>
+          <Field label="Exit strategy">
+            <select
+              value={node.config.exit ?? "aggregate"}
+              onChange={(event) => commit({ config: { ...node.config, exit: event.target.value as "aggregate" | "serialize" } })}
+            >
+              <option value="aggregate">Aggregate member outputs</option>
+              <option value="serialize">Serialize member outputs</option>
+            </select>
+          </Field>
+          <Field label="Member node IDs">
+            <input
+              value={(node.config.members ?? []).join(", ")}
+              onChange={(event) =>
+                update(
+                  "members",
+                  event.target.value
+                    .split(",")
+                    .map((item) => item.trim())
+                    .filter(Boolean),
+                )
+              }
+              onBlur={() => commit({ config: node.config })}
+            />
+          </Field>
+          <p className="field-help">Select this group or one of its members before adding a primitive to place it inside.</p>
+        </>
       )}
       {node.kind === "transform" && (
         <>

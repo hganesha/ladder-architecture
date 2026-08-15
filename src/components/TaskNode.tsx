@@ -8,6 +8,7 @@ import {
   Database,
   GitBranch,
   IterationCcw,
+  LayoutPanelTop,
   LogIn,
   LogOut,
   ShieldCheck,
@@ -30,6 +31,7 @@ const icons = {
   approval: CheckCircle2,
   join: Combine,
   loop: IterationCcw,
+  group: LayoutPanelTop,
   subgraph: CircleDot,
 };
 

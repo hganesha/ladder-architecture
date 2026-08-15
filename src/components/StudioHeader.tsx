@@ -141,10 +141,13 @@ export function StudioHeader({ onStorage }: { onStorage: () => void }) {
         >
           <option value="codex">Codex</option>
           <option value="claude">Claude</option>
+          <option value="hermes">Hermes Agent</option>
+          <option value="python">Python</option>
+          <option value="typescript">TypeScript</option>
         </select>
         <button className="compile-button" disabled={state.busy} onClick={() => void state.compile()}>
           <WandSparkles size={15} />
-          {state.busy ? "Checking…" : "Compile"}
+          <span>{state.busy ? "Checking…" : "Compile"}</span>
         </button>
         <button className="icon-button" title="Import YAML" aria-label="Import YAML" onClick={() => fileRef.current?.click()}>
           <FileUp size={15} />
@@ -178,6 +181,66 @@ export function StudioHeader({ onStorage }: { onStorage: () => void }) {
           }}
         />
       </div>
+      <section className="mobile-workspace-tools" aria-label="Mobile editor controls">
+        <fieldset className="mode-switch mobile-mode-switch">
+          <legend className="sr-only">Editor view</legend>
+          <button
+            className={state.centerMode === "canvas" ? "active" : ""}
+            onClick={() => state.setCenterMode("canvas")}
+            aria-label="Canvas view"
+          >
+            <Code2 size={15} />
+          </button>
+          <button
+            className={state.centerMode === "split" ? "active" : ""}
+            onClick={() => state.setCenterMode("split")}
+            aria-label="Split canvas and YAML"
+          >
+            <Columns2 size={15} />
+          </button>
+          <button
+            className={state.centerMode === "source" ? "active" : ""}
+            onClick={() => state.setCenterMode("source")}
+            aria-label="YAML source view"
+          >
+            <Braces size={15} />
+          </button>
+        </fieldset>
+        <select
+          className="target-select mobile-target-select"
+          value={state.target}
+          onChange={(event) => void state.setTarget(event.target.value as Target)}
+          aria-label="Compile target"
+        >
+          <option value="codex">Codex</option>
+          <option value="claude">Claude</option>
+          <option value="hermes">Hermes Agent</option>
+          <option value="python">Python</option>
+          <option value="typescript">TypeScript</option>
+        </select>
+        <button
+          className="icon-button"
+          title="Diagnostics"
+          aria-label={`${errors} errors and ${warnings} warnings`}
+          onClick={() => state.toggleDiagnostics(true)}
+        >
+          <CheckCircle2 size={15} />
+        </button>
+        <button className="icon-button" title="Import YAML" aria-label="Import YAML" onClick={() => fileRef.current?.click()}>
+          <FileUp size={15} />
+        </button>
+        <button
+          className="icon-button"
+          title="Export YAML"
+          aria-label="Export YAML"
+          onClick={() => download(`${workflow?.metadata.name ?? "workflow"}.yaml`, state.source, "application/yaml")}
+        >
+          <Download size={15} />
+        </button>
+        <button className="icon-button" title="Storage" aria-label="Storage details" onClick={onStorage}>
+          <Database size={15} />
+        </button>
+      </section>
       {importError && <div className="import-error">{importError}</div>}
     </header>
   );

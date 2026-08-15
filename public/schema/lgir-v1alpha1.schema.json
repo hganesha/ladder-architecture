@@ -35,7 +35,7 @@
             "properties": {
               "id": { "type": "string" },
               "kind": {
-                "enum": ["input", "output", "agent", "tool", "transform", "condition", "evaluate", "approval", "join", "loop", "subgraph"]
+                "enum": ["input", "output", "agent", "tool", "transform", "condition", "evaluate", "approval", "join", "loop", "group", "subgraph"]
               },
               "name": { "type": "string" },
               "summary": { "type": "string" },
@@ -50,10 +50,38 @@
                   "skills": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
                   "tools": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
                   "connectors": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
-                  "permissions": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+                  "permissions": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+                  "customizations": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "object",
+                      "required": ["template", "instructions"],
+                      "additionalProperties": false,
+                      "properties": {
+                        "template": { "type": "string", "minLength": 1 },
+                        "instructions": { "type": "string" }
+                      }
+                    }
+                  }
                 }
               },
-              "config": { "type": "object" },
+              "config": {
+                "type": "object",
+                "properties": {
+                  "operation": { "enum": ["select", "rename", "merge", "filter", "deduplicate", "sort", "slice", ""] },
+                  "expression": { "type": "string" },
+                  "branches": { "type": "array" },
+                  "join": { "enum": ["all", "allSettled", "first", ""] },
+                  "body": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+                  "exitCondition": { "type": "string" },
+                  "maxIterations": { "type": "integer", "minimum": 0, "maximum": 100 },
+                  "onExhausted": { "enum": ["stop", "continue", "warn", ""] },
+                  "threshold": { "type": "number" },
+                  "members": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+                  "execution": { "enum": ["sequential", "parallel", ""] },
+                  "exit": { "enum": ["aggregate", "serialize", ""] }
+                }
+              },
               "position": { "type": "object" }
             }
           }

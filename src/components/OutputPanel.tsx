@@ -16,13 +16,14 @@ export function OutputPanel() {
   const target = useStudioStore((state) => state.target);
   const close = useStudioStore((state) => state.toggleOutput);
   const [copied, setCopied] = useState(false);
+  const isCode = target === "python" || target === "typescript";
 
   return (
     <section className="output-panel" aria-label="Compiled workflow output">
       <header>
         <div>
           <FileText size={16} />
-          <span>Compiled workflow</span>
+          <span>Compiled {isCode ? "data module" : "workflow"}</span>
           <em>{target}</em>
         </div>
         <div>
@@ -36,11 +37,11 @@ export function OutputPanel() {
             }}
           >
             {copied ? <Check size={14} /> : <Clipboard size={14} />}
-            {copied ? "Copied" : "Copy prompt"}
+            <span>{copied ? "Copied" : isCode ? "Copy code" : "Copy prompt"}</span>
           </button>
           <button disabled={!result?.ok} onClick={() => result?.ok && download(result.suggestedFilename, result.content, result.mimeType)}>
             <Download size={14} />
-            Download Markdown
+            <span>Download {target === "python" ? "Python" : target === "typescript" ? "TypeScript" : "Markdown"}</span>
           </button>
           <button className="icon-only" onClick={() => close(false)} aria-label="Close output">
             <X size={16} />

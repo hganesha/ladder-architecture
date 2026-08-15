@@ -6,7 +6,7 @@ LGIR version: `ladder.dev/v1alpha1`
 
 ## Product outcome
 
-Ladder Graph helps developers design agent workflows visually, validate the hard parts, and copy one self-contained Markdown workflow that Codex or Claude can follow.
+Ladder Graph helps developers design agent workflows visually, validate the hard parts, and compile one self-contained artifact for Codex, Claude, Hermes Agent, Python, or TypeScript.
 
 The MVP is a compiler, not an agent runtime. It never calls a model, executes a shell command, invokes MCP, stores provider credentials, or claims that an instructional target feature is mechanically enforced.
 
@@ -19,9 +19,9 @@ Within ten minutes, a developer can:
 3. Inspect the synchronized LGIR YAML.
 4. Identify an unbounded loop diagnostic.
 5. Apply the safe bounded-loop repair.
-6. Select Codex or Claude.
+6. Select an instructional harness or deterministic code target.
 7. Validate and compile.
-8. Copy or download one Markdown workflow.
+8. Copy or download the generated artifact.
 
 Activation occurs when a user validates and copies or downloads a workflow with at least three agent or control nodes.
 
@@ -30,27 +30,30 @@ Activation occurs when a user validates and copies or downloads a workflow with 
 ### Included
 
 - Visual and YAML authoring of deterministic workflows.
-- Dependencies, typed data edges, control edges, parallel branches, joins, conditions, evaluations, approvals, structured loops, and subgraphs.
-- Canonical node kinds: `input`, `output`, `agent`, `tool`, `transform`, `condition`, `evaluate`, `approval`, `join`, `loop`, and `subgraph`.
+- Dependencies, typed data edges, control edges, parallel branches, joins, conditions, evaluations, approvals, structured loops, execution groups, and subgraphs.
+- Canonical node kinds: `input`, `output`, `agent`, `tool`, `transform`, `condition`, `evaluate`, `approval`, `join`, `loop`, `group`, and `subgraph`.
 - Declarative transforms: select, rename, merge, filter, deduplicate, sort, and slice.
 - Visual macro insertion for Parallel, Pipeline, Reduce, and Verify. Macros materialize canonical nodes and edges before validation.
-- Role templates for implementer, tester, researcher, critic/evaluator, product manager, designer, GTM specialist, and security reviewer.
-- Deterministic Codex and Claude Markdown adapters.
+- Role templates for the eight core roles plus 20 software-development, 20 security, and 20 architecture/design specialists. Research-derived roles preserve their narrow responsibility, handoff, verification, connector, and authorization boundaries.
+- Deterministic Codex, Claude, and Hermes Agent Markdown adapters.
+- Deterministic Python and TypeScript data-module adapters with stable node order, dependencies, capability manifests, and pure readiness helpers.
 - IndexedDB projects and indexes, OPFS revision bodies with IndexedDB fallback, autosave, explicit import/export, and PWA offline support.
 
 ### Excluded
 
 - Model, agent, tool, MCP, shell, Python, or JavaScript execution.
 - Provider accounts, credentials, traces, cost tracking, telemetry, cloud sync, or collaboration.
-- Arbitrary code transforms, generated Python/JavaScript orchestrators, native multi-file packs, or round-trip parsing of target files.
+- Arbitrary code transforms, generated executors with side effects, native multi-file packs, or round-trip parsing of target files.
 
 ## Experience requirements
 
-The welcome screen contains exactly three outcome-led workflow shapes:
+The welcome screen groups outcome-led starter workflows by area, including these core shapes:
 
 - Draft → critique → bounded revision.
 - Parallel implementation and risk review → join.
 - Evidence research → synthesis → evaluation.
+
+The expanded library also includes secure software delivery, security incident response, multimodal asset production, and coordinated building design. These templates add explicit cost, authorization, professional-review, containment, publication, and release approvals where the underlying work can affect external systems, people, or budgets.
 
 The studio retains the reference concept’s dark technical language: compact navigation, grid canvas, colored graph cards, minimap, palette, inspector, and bottom compiler drawer. All visible branding is Ladder Graph and all copy describes compilation rather than execution.
 
@@ -75,15 +78,21 @@ spec:
 
 Rust structs are the semantic authority. The checked-in JSON Schema at `public/schema/lgir-v1alpha1.schema.json` is the portable authoring contract; TypeScript types mirror the worker result boundary.
 
-### Harness capabilities
+### Target capabilities
 
-Agent, evaluator, and tool nodes declare four separate capability sets: `skills`, primitive `tools`, `connectors`, and `permissions`. The studio changes its suggested skill and connector catalog with the selected Codex or Claude target, highlights recommendations inferred from the node role, and preserves custom repository-specific identifiers.
+Agent, evaluator, and tool nodes declare four separate capability sets: `skills`, primitive `tools`, `connectors`, and `permissions`. The studio changes its suggested catalog with the selected Codex, Claude, Hermes Agent, Python, or TypeScript target, highlights recommendations inferred from the node role, and preserves custom identifiers.
 
-Catalog entries are authoring suggestions, not an inventory of installed capabilities. Ladder Graph does not connect to either harness, inspect user configuration, install skills, grant permissions, or invoke connectors. Compiled Markdown names every required skill and connector, identifies the target skill location (`.agents/skills/` or `.claude/skills/`), and requires the harness to stop and report a missing capability rather than silently substituting it.
+Every selected skill or connector resolves to a `customizations` record containing a pre-built base `template` and editable `instructions`. Custom identifiers start from a safe generic skill or connector contract and can be rebased onto another available template. The complete template selection and customization is stored in LGIR, so generated artifacts are reproducible and do not depend on hidden studio state.
+
+Catalog entries are authoring suggestions, not an inventory of installed capabilities. Ladder Graph does not connect to a harness, inspect user configuration, install skills, grant permissions, import runtime packages, or invoke connectors. Compiled Markdown names every required skill and connector and embeds custom instructions. Generated code exposes the same declarations as inert data for an explicitly supplied host application. OpenRouter profiles are research snapshots: model slugs, endpoints, supported parameters, asynchronous behavior, availability, and pricing must be verified before use, and credentials must never be stored in LGIR.
 
 ### Structured loops
 
 A loop owns a body list, an exit-condition reference, `maxIterations` from 1 through 100, and an exhaustion policy. Back-edges and self-edges are invalid. Targets render loops as explicit bounded instructions and report the capability as instructional.
+
+### Execution groups
+
+A group is a visible bounding container with one external input and one external output. It owns an ordered `members` list, runs those members in `sequential` or `parallel` mode, and exits only after every member result has been `aggregate`d or `serialize`d. Direct edges across a member boundary produce diagnostics so inputs enter through the group and outputs leave through its collector.
 
 ### Security limits
 
@@ -91,22 +100,25 @@ A loop owns a body list, an exit-condition reference, `maxIterations` from 1 thr
 - Custom YAML tags, anchors, aliases, and external references are rejected.
 - Duplicate IDs, missing endpoints, unsupported node kinds, and arbitrary cycles are errors.
 - Imported content is never executed.
-- Generated Markdown is rendered as text, not injected HTML.
+- Generated Markdown and source code are rendered as text, not injected HTML or executed in the browser.
 
 ## Compiler interfaces
 
 The browser calls a dedicated Web Worker. The worker loads the committed Rust-generated WebAssembly module and falls back to the TypeScript parity implementation only when WebAssembly initialization is unavailable.
 
 ```ts
-analyze(yaml: string, target?: "codex" | "claude"): AnalysisResult
+type Target = "codex" | "claude" | "hermes" | "python" | "typescript"
+analyze(yaml: string, target?: Target): AnalysisResult
 format(yaml: string): FormatResult
-compile(yaml: string, target: "codex" | "claude"): CompileResult
+compile(yaml: string, target: Target): CompileResult
 migrate(yaml: string, toVersion: string): MigrationResult
 ```
 
-Compilation is blocked by errors. Results contain one Markdown document, filename, source hash, compiler and adapter versions, diagnostics, and a capability report with `native`, `instructional`, and `unsupported` states. Unsupported target constructs are never omitted silently.
+Compilation is blocked by errors. Results contain one artifact, filename, MIME type, source hash, compiler and adapter versions, diagnostics, and a capability report with `native`, `instructional`, and `unsupported` states. Unsupported target constructs are never omitted silently.
 
-Codex artifacts include Agent Skills-compatible frontmatter and can be saved beneath `.agents/skills/`; repository-wide instructions remain `AGENTS.md`. Claude artifacts use equivalent `SKILL.md` content and can be saved beneath `.claude/skills/`. Every file declares its target and documentation date.
+Codex artifacts include Agent Skills-compatible frontmatter and can be saved beneath `.agents/skills/`; repository-wide instructions remain `AGENTS.md`. Claude artifacts use equivalent `SKILL.md` content and can be saved beneath `.claude/skills/`. Hermes artifacts add `metadata.hermes` fields and can be saved as `~/.hermes/skills/ladder-graph/<workflow>/SKILL.md`. Hermes toolsets, MCP servers, and OpenRouter profiles remain explicit capability requirements: Ladder Graph neither edits `~/.hermes/config.yaml` nor stores provider credentials. Every file declares its target and documentation date. See the official [Hermes skills](https://github.com/NousResearch/hermes-agent/blob/main/website/docs/user-guide/features/skills.md), [tools and toolsets](https://github.com/NousResearch/hermes-agent/blob/main/website/docs/user-guide/features/tools.md), and [MCP integration](https://github.com/NousResearch/hermes-agent/blob/main/website/docs/guides/use-mcp-with-hermes.md) documentation.
+
+Python artifacts are importable `.ladder.py` modules. TypeScript artifacts are typed `.ladder.ts` modules. Both embed the normalized workflow, stable topological order, dependency map, and per-node capability-template manifest, plus pure `ready_nodes`/`readyNodes` and capability lookup helpers. They do not import providers, invoke connectors, evaluate expressions, or execute nodes.
 
 ## Architecture decisions
 
@@ -118,7 +130,7 @@ Codex artifacts include Agent Skills-compatible frontmatter and can be saved ben
 
 ## Product success and GTM
 
-The launch story is a 90-second draft–critique–revise demo, three inspectable graphs, a graph-versus-generated-prompt comparison, and an explicit no-account/no-runtime security statement. Distribution focuses on GitHub, Hacker News, coding-agent communities, applied-AI researchers, and template contributors.
+The launch story is a 90-second draft–critique–revise demo, inspectable graphs, a graph-versus-generated-artifact comparison, and an explicit no-account/no-runtime security statement. Distribution focuses on GitHub, Hacker News, coding-agent communities, applied-AI researchers, and template contributors.
 
 Moderated validation succeeds when at least four of five participants can explain execution order, repair an unsafe loop, understand a target warning, and produce a usable prompt within ten minutes. With telemetry excluded, adoption is assessed through moderated studies, repository activity, discussions, issues, and opt-in feedback.
 

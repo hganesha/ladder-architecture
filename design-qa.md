@@ -2,6 +2,44 @@
 
 final result: passed
 
+## Latest refinement — deterministic Python and TypeScript targets
+
+### Evidence
+
+- Source visual truth: `artifacts/qa/inspector-harness-capabilities.jpg` — the established light-theme capability inspector with Claude selected.
+- Browser-rendered implementation: `artifacts/qa/code-targets-typescript-top.jpg` — the same full-stack workflow, viewport, theme, selected node, and inspector tab with TypeScript selected.
+- Customization state: `artifacts/qa/code-targets-typescript.jpg` — the same implementation with the inspector scrolled to an expanded base-template customization.
+- Full-view comparison input: `artifacts/qa/code-targets-comparison.jpg`.
+- Focused inspector comparison input: `artifacts/qa/code-targets-focused-comparison.jpg`.
+- Source and implementation pixels: 1082 × 912 at 1× density; CSS viewport: 1082 × 912. The temporary QA viewport override was reset after capture.
+- State normalization: both primary captures use Full-stack app delivery, light theme, canvas view, Product and UX design selected, Capabilities active, both sidebars visible, and the first meaningful phase framed. Target-specific catalog contents and connector selections intentionally differ.
+
+### Findings
+
+- Passed information architecture: the existing target selector now presents Codex, Claude, Hermes Agent, Python, and TypeScript without adding a new navigation layer. The inspector consistently calls the section “Target catalog,” identifies the artifact type, and distinguishes embedded templates from external connector declarations.
+- Passed capability-template model: every selected skill and connector exposes a base-template selector and editable node-specific instructions. Custom identifiers receive a safe generic base contract and can be rebased to a pre-built template. The expanded editor remains within the inspector’s established scroll model.
+- Passed deterministic artifact behavior: Python and TypeScript outputs embed normalized workflow data, stable node order, dependency maps, tools, permissions, and per-node capability templates. Their readiness and capability lookup helpers are pure; generated code contains no provider imports, dynamic evaluation, connector calls, or node execution.
+- Passed persistence: the Python target and customized Product design instruction survived autosave, full page reload, project reopening, Rust/WASM normalization, and a subsequent switch to TypeScript.
+- Passed output actions: code targets use “Copy code” and language-specific download labels. Clipboard output preserved the selected template customization. Python and TypeScript suggested filenames and MIME types match `.ladder.py`/`text/x-python` and `.ladder.ts`/`text/typescript`.
+- Passed fonts and typography: Syne, Outfit, and IBM Plex Mono roles remain unchanged. Target labels, machine identifiers, recommendations, template names, and multiline custom instructions retain the established hierarchy and readable line height.
+- Passed spacing and layout rhythm: the target card, searchable catalogs, customization details, form fields, and declaration notice use the existing inspector width, 7–9 px radii, border rhythm, and compact vertical spacing. The 1082 × 912 document has no horizontal or vertical page overflow; only the inspector owns vertical scrolling.
+- Passed colors and tokens: selected cyan states, graphite borders, muted descriptions, and white surfaces match the existing light system. The same state was toggled through dark mode and back with no overflow or lost content.
+- Passed image quality and icon fidelity: no images, placeholders, custom SVGs, CSS drawings, or decorative substitutes were added. Existing Lucide icons remain aligned with the target selector, capability sections, and action controls.
+- Passed copy and content: “Deterministic typed data module,” “Embedded capability templates,” and “no imports or network calls” communicate the new target boundary directly. The declaration notice avoids implying that generated source installs or invokes capabilities.
+- Passed accessibility: target selection remains a labeled native combobox; template customization uses semantic `details`, `summary`, labeled selects, and labeled textareas; catalogs retain native pressed buttons, lists, search labels, and visible focus behavior. Meaning is not color-dependent.
+- Passed generated-source verification: the browser used the Rust/WASM core for both new targets. Generated Python passed `python3 -m py_compile`; generated TypeScript passed `tsc --noEmit --target ES2020 --module ESNext`. Repeated compiler tests remained byte-identical.
+- Passed browser health: Python/TypeScript selection, customization, save/reload, compile, copy, theme switching, and output closing were exercised. No browser errors or warnings were recorded.
+
+### Comparison history
+
+| Iteration | Finding | Resolution |
+| --- | --- | --- |
+| Target model | The public target union, selector, persistence, and adapters only recognized Codex and Claude. | Added Hermes Agent, Python, and TypeScript end-to-end across TypeScript types, IndexedDB records, worker protocol, Rust validation, adapters, reports, and UI. |
+| Template customization | Capability selections only stored IDs, so a custom capability had no reproducible base contract or node-specific behavior. | Added LGIR `customizations` records, safe generic templates, target-specific bases, editable instructions, schema coverage, and self-contained compiler output. |
+| Python readability | The first data adapter embedded one escaped JSON string, which was deterministic but difficult to inspect and customize. | Replaced it with a formatted native Python data literal and recaptured the generated output; syntax validation passes. |
+| State framing | The customization capture initially began mid-inspector, hiding the target context. | Captured a normalized top-of-inspector target view plus a separate focused customization state at the same viewport. |
+| Final | No actionable P0, P1, or P2 issue remains in the new code-target and template-customization flow. | final result: passed. |
+
 ## Latest refinement — harness-aware skills and connectors
 
 ### Evidence
@@ -16,7 +54,7 @@ final result: passed
 ### Findings
 
 - Passed information architecture: Capabilities is a first-class inspector tab. A compact harness card establishes the selected target, repository skill location, and connector source before the editable lists.
-- Passed target behavior: switching Codex and Claude updates the visible skill path and catalog while preserving the node's declarative selections. Codex points to `.agents/skills/`; Claude points to `.claude/skills/`.
+- Passed target behavior: switching Codex, Claude, and Hermes Agent updates the visible skill path and catalog while preserving the node's declarative selections. Codex points to `.agents/skills/`; Claude points to `.claude/skills/`; Hermes points to `~/.hermes/skills/`.
 - Passed selection model: searchable skill and connector catalogs provide selected, unselected, and recommended states. Selected items remain visible as removable chips, and repository-specific skill or MCP IDs can be added without being limited to the curated catalog.
 - Passed layout and spacing: the 278 px inspector retains the established panel width and internal scroll behavior. Controls use the existing compact grid, border, radius, and cyan selection tokens; no persistent studio controls are clipped and the document has no horizontal overflow.
 - Passed fonts and typography: the existing Syne, Outfit, and IBM Plex Mono roles are preserved. Capability labels, descriptions, identifiers, recommendations, and selected counts remain legible at the verified density, with clear hierarchy between display names and machine-readable IDs.
@@ -24,7 +62,7 @@ final result: passed
 - Passed image quality and icon fidelity: no raster imagery, decorative substitutes, or custom-drawn SVGs were introduced. Lucide icons remain consistent with the existing toolbar and inspector icon family.
 - Passed copy and content: labels distinguish skills, connectors, primitive tools, and permissions. The no-ambient-authority note explicitly states that catalog entries are suggestions rather than detected installations and that Ladder Graph never grants or invokes them.
 - Passed accessibility: skills and connectors use labeled regions, semantic lists, search inputs, descriptive remove buttons, and toggle buttons with `aria-pressed`. The harness target is not communicated by color alone, and all primary controls remain keyboard-native.
-- Passed compiler behavior: connector selections survive TypeScript YAML handling, Rust/WASM normalization, autosave, and compilation. Generated Codex and Claude Markdown declares required connectors and the target skill directory; LG201 warns that connector availability is instructional rather than executed.
+- Passed compiler behavior: connector selections survive TypeScript YAML handling, Rust/WASM normalization, autosave, and compilation. Generated Codex, Claude, and Hermes Markdown declares required connectors and the target skill directory; LG201 warns that connector availability is instructional rather than executed.
 - Passed browser health: target switching, selection persistence, compilation, light/dark switching, and inspector scrolling were exercised in the live app. Browser logs contain only Vite connection/HMR messages and the React development hint; no errors or application warnings were observed.
 
 ### Comparison history
@@ -32,7 +70,7 @@ final result: passed
 | Iteration | Finding | Resolution |
 | --- | --- | --- |
 | Capability model | Primitive tools previously carried all capability-like values, obscuring the difference between local operations and external connectors. | Added `connectors` as a first-class LGIR capability field across TypeScript, schema, Rust, diagnostics, and both target adapters. |
-| Harness context | The inspector had no target-specific catalog or repository skill-location guidance. | Added a target-aware harness card and curated Codex/Claude skill and connector catalogs with contextual recommendations. |
+| Harness context | The inspector had no target-specific catalog or repository skill-location guidance. | Added a target-aware harness card and curated Codex, Claude, and Hermes skill and connector catalogs with contextual recommendations. |
 | Persistence parity | The pre-existing committed WASM artifact could normalize away the newly introduced connector field. | Regenerated the committed Rust/WASM package and verified browser compilation uses the updated core. |
 | Accessibility lint | Selected capability chips used generic elements with ARIA list roles. | Replaced them with native `ul`/`li` semantics and retained labeled remove controls. |
 | Final | No actionable P0, P1, or P2 issue remains in the harness-aware configuration flow. | final result: passed. |

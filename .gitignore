@@ -8,3 +8,4 @@ target/
 .vercel/
 *.log
 *.tsbuildinfo
+.vercel
