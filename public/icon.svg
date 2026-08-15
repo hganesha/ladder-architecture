@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <title>Ladder Graph</title>
+  <rect width="128" height="128" rx="28" fill="#0b0f12"/>
+  <path d="M32 28v72M96 28v72M32 43h64M32 64h64M32 85h64" fill="none" stroke="#54d7cf" stroke-width="9" stroke-linecap="round"/>
+  <circle cx="32" cy="28" r="9" fill="#e86b5d"/><circle cx="96" cy="100" r="9" fill="#e8b84a"/>
+</svg>

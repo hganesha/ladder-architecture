@@ -1,0 +1,17 @@
+{
+  "name": "lgir-core",
+  "type": "module",
+  "description": "Deterministic Ladder Graph IR validation and target compilation core",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "files": [
+    "lgir_core_bg.wasm",
+    "lgir_core.js",
+    "lgir_core.d.ts"
+  ],
+  "main": "lgir_core.js",
+  "types": "lgir_core.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}

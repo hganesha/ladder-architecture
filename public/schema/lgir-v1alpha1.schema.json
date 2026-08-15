@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ladder.dev/schema/lgir-v1alpha1.schema.json",
+  "title": "Ladder Graph Intermediate Representation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "properties": {
+    "apiVersion": { "const": "ladder.dev/v1alpha1" },
+    "kind": { "const": "Workflow" },
+    "metadata": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "version": { "type": "string" }
+      }
+    },
+    "spec": {
+      "type": "object",
+      "required": ["objective", "nodes", "edges"],
+      "properties": {
+        "objective": { "type": "string" },
+        "inputs": { "type": "object" },
+        "outputs": { "type": "object" },
+        "policies": { "type": "object" },
+        "nodes": {
+          "type": "array",
+          "maxItems": 1000,
+          "items": {
+            "type": "object",
+            "required": ["id", "kind", "name"],
+            "properties": {
+              "id": { "type": "string" },
+              "kind": {
+                "enum": ["input", "output", "agent", "tool", "transform", "condition", "evaluate", "approval", "join", "loop", "subgraph"]
+              },
+              "name": { "type": "string" },
+              "summary": { "type": "string" },
+              "role": { "type": "string" },
+              "prompt": { "type": "string" },
+              "inputSchema": { "type": ["object", "null"] },
+              "outputSchema": { "type": ["object", "null"] },
+              "capabilities": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "skills": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+                  "tools": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+                  "connectors": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+                  "permissions": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+                }
+              },
+              "config": { "type": "object" },
+              "position": { "type": "object" }
+            }
+          }
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "from", "to", "kind"],
+            "properties": {
+              "id": { "type": "string" },
+              "from": { "type": "string" },
+              "to": { "type": "string" },
+              "kind": { "enum": ["data", "dependency", "control"] },
+              "contract": { "type": "string" },
+              "condition": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}
