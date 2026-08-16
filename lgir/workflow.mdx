@@ -1,0 +1,172 @@
+---
+title: "LGIR Workflow Document: Metadata, Spec, and Policies"
+sidebarTitle: "Workflow"
+description: "Reference for the top-level LGIR Workflow document. Covers metadata fields, the spec objective, policies, and how inputs and outputs are declared."
+---
+
+The LGIR Workflow document is the top-level object that the Ladder Graph compiler reads, validates, and compiles. It has four required top-level keys — `apiVersion`, `kind`, `metadata`, and `spec` — and every field you author in the studio or write by hand maps directly to this structure. Understanding the document layout helps you write valid LGIR by hand, review diffs in version control, and interpret compiler diagnostics by their JSON-pointer paths.
+
+## Metadata Fields
+
+The `metadata` object identifies the workflow and provides human-facing context. The `name` field is the only required metadata field; all others are optional but recommended for generated artifacts to carry meaningful labels.
+
+<ParamField path="metadata.name" type="string" required>
+  A lowercase slug that uniquely identifies the workflow, for example `draft-critique-revise`. Must contain only lowercase ASCII letters, digits, and hyphens. The compiler emits a `LG102` error if `name` is empty or contains invalid characters. The compiled artifact's suggested filename is derived from this value (e.g. `draft-critique-revise.codex.md`).
+</ParamField>
+
+<ParamField path="metadata.title" type="string">
+  A human-readable display name shown in the studio header and embedded in compiled Markdown artifacts as the document heading. If omitted, the compiler falls back to `name`.
+</ParamField>
+
+<ParamField path="metadata.description" type="string">
+  A short description of the workflow's purpose. This text is embedded in the YAML frontmatter of compiled Markdown artifacts and in the `description` field of Python and TypeScript data modules.
+</ParamField>
+
+<ParamField path="metadata.version" type="string">
+  A semantic version string, for example `1.0.0`. Not validated by the compiler — it is stored as-is and available to any tooling that reads the LGIR document.
+</ParamField>
+
+## Spec Fields
+
+The `spec` object holds all workflow logic. `objective`, `nodes`, and `edges` are required; all other fields are optional.
+
+<ParamField path="spec.objective" type="string" required>
+  A verifiable outcome statement that describes what the workflow produces when it completes successfully. For example: `"Produce a reviewed and revised draft with a quality score of at least 0.8."` The objective is embedded verbatim in compiled Markdown artifacts and in generated code modules. If `objective` is empty, the compiler emits a `LG103` warning.
+</ParamField>
+
+<ParamField path="spec.nodes" type="LgirNode[]" required>
+  The ordered list of node objects that make up the workflow. See [Nodes](/lgir/nodes) for the full field reference. The compiler emits `LG131` if no `output` node is present and `LG130` if no `input` node is present. The list is limited to 1,000 nodes (diagnostic `LG104`).
+</ParamField>
+
+<ParamField path="spec.edges" type="LgirEdge[]" required>
+  The ordered list of edge objects that connect nodes. See [Edges](/lgir/edges) for the full field reference. The compiler validates that every `from` and `to` references an existing node ID and that no arbitrary cycles exist.
+</ParamField>
+
+<ParamField path="spec.inputs" type="object">
+  A JSON Schema object describing the workflow's expected inputs. This field is stored in LGIR and included in compiled Python and TypeScript data modules. The compiler does not evaluate inputs at compile time; they are authoring documentation for downstream consumers.
+</ParamField>
+
+<ParamField path="spec.outputs" type="object">
+  A JSON Schema object describing the workflow's expected outputs. Stored and forwarded to compiled artifacts in the same way as `inputs`.
+</ParamField>
+
+<ParamField path="spec.policies" type="object">
+  Execution policies that govern how a runtime or harness should schedule and handle failures. See [Policies](#policies-fields) below.
+</ParamField>
+
+## Policies Fields
+
+The `policies` object is optional. When omitted, the compiler applies the defaults listed below.
+
+<ParamField path="spec.policies.maxConcurrency" type="integer" default={4}>
+  The maximum number of nodes that may execute in parallel. The compiler embeds this value in compiled Markdown artifacts as a named operating rule so that instruction-following targets respect it. Must be a positive integer.
+</ParamField>
+
+<ParamField path="spec.policies.onFailure" type="string" default="stop">
+  What to do when a node fails. Accepted values are `stop` (halt the workflow immediately and preserve completed outputs) and `continue` (skip the failed node and proceed with any nodes whose dependencies are satisfied). The compiler embeds this value in compiled artifacts.
+</ParamField>
+
+<ParamField path="spec.policies.requireApprovalFor" type="string[]">
+  A list of node IDs that require explicit human approval before executing. This is an authoring convenience — the compiler does not add `approval` nodes automatically. Use it to surface which nodes need gating in compiled Markdown artifacts.
+</ParamField>
+
+<Note>
+  Policies are instruction-level guidance for runtimes and instruction-following agents. The Ladder Graph compiler is not an execution engine and does not enforce concurrency or failure policies at compile time. Compiled Python and TypeScript modules expose `maxConcurrency` and `onFailure` as inert data fields that your host application reads and enforces.
+</Note>
+
+## Full Example
+
+The following document shows a complete workflow with all metadata fields, policies, and representative placeholder nodes and edges.
+
+```yaml
+apiVersion: ladder.dev/v1alpha1
+kind: Workflow
+metadata:
+  name: draft-critique-revise
+  title: Draft → Critique → Revise
+  description: Produce a reviewed draft that meets a minimum quality threshold.
+  version: 1.0.0
+spec:
+  objective: >
+    Produce a final draft that scores at least 0.8 on the quality evaluator
+    and addresses every critique raised in the review pass.
+  inputs:
+    type: object
+    properties:
+      topic:
+        type: string
+        description: The subject of the draft.
+      constraints:
+        type: string
+        description: Style, length, and scope constraints.
+    required: [topic]
+  outputs:
+    type: object
+    properties:
+      draft:
+        type: string
+      qualityScore:
+        type: number
+  policies:
+    maxConcurrency: 2
+    onFailure: stop
+    requireApprovalFor: [publish]
+  nodes:
+    - id: capture
+      kind: input
+      name: Capture Request
+      summary: Accept the topic and constraints from the user.
+    - id: writer
+      kind: agent
+      name: Writer
+      role: Technical Writer
+      prompt: Draft a response to the topic within the stated constraints.
+      summary: Produces the initial draft.
+    - id: critic
+      kind: evaluate
+      name: Quality Critic
+      role: Critical Reviewer
+      prompt: Score the draft from 0.0 to 1.0 and list specific improvements.
+      summary: Reviews and scores the draft.
+      config:
+        threshold: 0.8
+    - id: revise-loop
+      kind: loop
+      name: Revision Loop
+      summary: Repeat the write–critique cycle until quality is sufficient.
+      config:
+        body: [writer, critic]
+        exitCondition: critic.score >= 0.8
+        maxIterations: 5
+        onExhausted: stop
+    - id: publish
+      kind: approval
+      name: Publish Approval
+      summary: Request explicit approval before releasing the final draft.
+    - id: result
+      kind: output
+      name: Final Draft
+      summary: Return the approved draft and quality score.
+  edges:
+    - id: e-capture-writer
+      from: capture
+      to: writer
+      kind: dependency
+    - id: e-writer-critic
+      from: writer
+      to: critic
+      kind: data
+      contract: "{ draft: string }"
+    - id: e-critic-loop
+      from: critic
+      to: revise-loop
+      kind: dependency
+    - id: e-loop-publish
+      from: revise-loop
+      to: publish
+      kind: dependency
+    - id: e-publish-result
+      from: publish
+      to: result
+      kind: dependency
+```

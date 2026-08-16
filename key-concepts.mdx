@@ -1,0 +1,201 @@
+---
+title: "Key Concepts: LGIR, Nodes, Edges, and Targets"
+sidebarTitle: "Key Concepts"
+description: "Understand the LGIR workflow format, the 11 node kinds, three edge kinds, compilation targets, and how the Rust/WASM compiler validates your graph."
+---
+
+Ladder Graph is built around a small set of concepts that compose into arbitrarily complex agent workflows. Understanding them helps you design graphs that validate cleanly, compile to accurate artifacts, and communicate intent to anyone who reads the generated output. This page covers the canonical workflow format, every node and edge kind, the compiler pipeline, compilation targets, diagnostics, and the offline storage model.
+
+## LGIR
+
+**LGIR** (Ladder Graph Intermediate Representation) is the canonical YAML format for all workflows in Ladder Graph. Every workflow you create or edit in the studio is stored as LGIR YAML—the canvas, the inspector, and the YAML editor are all views into the same document. When you compile, the Rust/WASM engine reads LGIR directly; the compiled artifact is always reproducible from the YAML alone.
+
+Every LGIR document begins with the same four required fields:
+
+```yaml
+apiVersion: ladder.dev/v1alpha1
+kind: Workflow
+metadata:
+  name: my-workflow
+spec:
+  objective: "Produce a reviewed deliverable."
+  nodes: []
+  edges: []
+```
+
+| Field | Description |
+|---|---|
+| `apiVersion` | Always `ladder.dev/v1alpha1` for the current format version |
+| `kind` | Always `Workflow` |
+| `metadata.name` | A lowercase slug that uniquely identifies this workflow |
+| `spec.objective` | A verifiable outcome statement used in the compiled artifact |
+| `spec.nodes` | The ordered list of node objects (see Node Kinds below) |
+| `spec.edges` | The ordered list of edge objects (see Edge Kinds below) |
+
+You can also set `metadata.title`, `metadata.description`, `metadata.version`, and top-level `spec.policies` (for `maxConcurrency`, `onFailure`, and `requireApprovalFor`).
+
+The Rust engine is the semantic authority for LGIR. The JSON Schema at `public/schema/lgir-v1alpha1.schema.json` serves as a portable editor contract, but schema validation alone cannot enforce graph topology, structured loop bounds, group ownership, or deterministic ordering—the Rust compiler handles all of that.
+
+<Note>
+  LGIR imports are capped at 2 MB and 1,000 nodes. Custom YAML tags, anchors, aliases, and external references are always rejected. Imported YAML is data—it is never executed.
+</Note>
+
+## Node Kinds
+
+Ladder Graph defines **11 canonical node kinds** organized into three categories: Flow, Work, and Control. You place nodes on the canvas from the palette or insert them by editing LGIR directly.
+
+| Kind | Category | Description |
+|---|---|---|
+| `input` | Flow | The workflow entry point. Carries the objective and typed input schema into the graph. |
+| `output` | Flow | The final completion contract. Describes what the workflow returns when it succeeds. |
+| `group` | Flow | A bounded sequential or parallel execution phase with one external input, one external output, and an ordered `members` list. |
+| `subgraph` | Flow | A named, collapsible phase that groups related nodes without enforcing an execution contract. |
+| `agent` | Work | One focused role and prompt. The core work unit—assign a narrow specialist identity and a clear instruction. |
+| `tool` | Work | A declarative capability requirement. Describes a tool the workflow needs without prescribing how it is invoked. |
+| `transform` | Data | A safe, declarative data-mapping step. Supported operations: `select`, `rename`, `merge`, `filter`, `deduplicate`, `sort`, and `slice`. |
+| `condition` | Control | Branches the graph based on an explicit expression. Each branch has a label and a `when` predicate. |
+| `evaluate` | Control | Scores or critiques a result against a contract. Returns `score`, `passed`, and `reasons`. Used as a quality or safety gate. |
+| `approval` | Control | Pauses execution for explicit human consent before continuing. |
+| `join` | Control | Waits for parallel branches to complete. Join modes: `all`, `allSettled`, and `first`. |
+| `loop` | Control | A bounded structured revision cycle. Owns a `body` list of node IDs, an `exitCondition`, a `maxIterations` (1–100), and an `onExhausted` policy (`stop`, `continue`, or `warn`). |
+
+<Tip>
+  Four **visual macros**—Parallel, Pipeline, Reduce, and Verify—are available from the palette. Macros insert a pre-wired set of canonical nodes and edges in one action. The macro expands into plain LGIR before validation, so the persisted file never contains macro-specific syntax.
+</Tip>
+
+## Edge Kinds
+
+Edges connect nodes and carry one of three semantic meanings. Every edge has an `id`, a `from` node ID, a `to` node ID, and a `kind`.
+
+**`data` edges** carry typed payloads between nodes. A data edge has a `contract` field naming the payload schema (e.g., `"Brief"`, `"QualityEvidence"`). The contract is used in compiled artifacts to show what each node expects and produces, and it is validated for consistency across the graph.
+
+```yaml
+- id: e-draft-critique
+  from: draft
+  to: critique
+  kind: data
+  contract: Draft
+```
+
+**`dependency` edges** declare execution ordering without transferring data. Use a dependency edge when one node must complete before another can start, but the downstream node does not consume the upstream node's output directly. Common between a join node and the next processing step.
+
+```yaml
+- id: e-join-synthesis
+  from: evidence-join
+  to: synthesis
+  kind: dependency
+```
+
+**`control` edges** carry branch signals from condition, evaluate, loop, and approval nodes. A control edge has a `condition` field containing the expression that must be true for the edge to be followed (e.g., `"passed == true"`, `"approved == true"`, `"modality == image"`).
+
+```yaml
+- id: e-loop-result
+  from: quality-loop
+  to: result
+  kind: control
+  condition: passed == true
+```
+
+<Warning>
+  Back-edges and self-edges are always validation errors. Ladder Graph enforces a DAG (directed acyclic graph) at the workflow level. Bounded repetition is expressed with `loop` nodes—not with cycles in the edge list.
+</Warning>
+
+## The Compiler Pipeline
+
+When you click Validate or Compile, the Rust/WASM engine runs a deterministic, single-pass pipeline. Each stage must succeed before the next begins.
+
+```text
+YAML bytes
+  → security limits and parse
+  → typed LGIR document
+  → ID / contract / control-flow validation
+  → deterministic topological order
+  → source hash and capability analysis
+  → Codex / Claude / Hermes instruction adapter
+      OR Python / TypeScript data adapter
+  → one self-contained Markdown or source-code artifact
+```
+
+**Security limits and parse** — The engine enforces a 2 MB size cap and a 1,000-node limit, rejects custom YAML tags, anchors, aliases, and external references, then parses the document into typed Rust structs.
+
+**ID / contract / control-flow validation** — Checks for duplicate node IDs, missing edge endpoints, unsupported node kinds, unsupported transform operations, loop `body` references to undefined nodes, group `members` integrity, cross-boundary edge violations, and more. Every finding is assigned a stable diagnostic code.
+
+**Deterministic topological order** — The engine produces a stable, reproducible node execution order. This order is embedded directly in compiled artifacts so your harness always processes nodes in the same sequence.
+
+**Source hash and capability analysis** — A content hash of the normalized LGIR is computed and attached to the artifact. The capability analysis produces a report per target, classifying every declared skill, tool, connector, and permission as `native`, `instructional`, or `unsupported`.
+
+**Target adapter** — The selected adapter transforms the normalized, ordered LGIR into one artifact: a Markdown skill file for Codex/Claude/Hermes, or a typed data module for Python/TypeScript.
+
+If the browser's WebAssembly runtime is unavailable, the compiler falls back to a TypeScript parity implementation so your work remains recoverable.
+
+## Compilation Targets
+
+Each target produces a single self-contained artifact optimized for a specific agent harness.
+
+<Tabs>
+  <Tab title="codex">
+    **Output:** `AGENTS.md` or `.agents/skills/<workflow>.md`
+
+    A Codex/Agent Skills-compatible Markdown file with YAML frontmatter declaring the workflow name, target, and documentation date. Node instructions appear in topological order, each with role, prompt, required skills, and connectors. Save the file beneath `.agents/skills/` in your repository, or use `AGENTS.md` for repository-wide instructions.
+  </Tab>
+  <Tab title="claude">
+    **Output:** `SKILL.md` or `.claude/skills/<workflow>.md`
+
+    Equivalent Markdown content formatted for Claude projects and Claude Code. Save it beneath `.claude/skills/` in your project. Frontmatter and skill structure follow the Claude SKILL.md convention.
+  </Tab>
+  <Tab title="hermes">
+    **Output:** `~/.hermes/skills/ladder-graph/<workflow>/SKILL.md`
+
+    A Hermes Agent skill file with additional `metadata.hermes` fields for toolsets and MCP server declarations. Ladder Graph neither edits `~/.hermes/config.yaml` nor stores provider credentials. Hermes toolsets, MCP servers, and OpenRouter profiles remain explicit capability requirements that you provision separately.
+  </Tab>
+  <Tab title="python">
+    **Output:** `<workflow>.ladder.py`
+
+    An importable Python module containing the normalized workflow as typed data structures, a stable topological node order list, a per-node dependency map, a capability manifest, and a `ready_nodes(workflow, completed)` pure helper function. The module never imports providers, calls connectors, or executes nodes. Your host application binds and authorizes all handlers.
+  </Tab>
+  <Tab title="typescript">
+    **Output:** `<workflow>.ladder.ts`
+
+    An importable TypeScript module with the same normalized data, `nodeOrder`, `dependencyMap`, `capabilityManifest`, and a `readyNodes(workflow, completed)` pure helper. Fully typed with no runtime dependencies. Your host application supplies all execution logic.
+  </Tab>
+</Tabs>
+
+Every compiled artifact includes the source hash and compiler/adapter versions, so you can verify that an artifact was produced from a specific LGIR snapshot and identify when a recompile is needed.
+
+## Diagnostics
+
+Every validation finding is a **diagnostic** with a consistent structure:
+
+| Field | Description |
+|---|---|
+| `code` | A stable string code (e.g., `LG001`, `LG042`) that identifies the finding type. Safe to use in scripts and CI checks. |
+| `severity` | `error`, `warning`, or `info` |
+| `path` | A dot-notation path into the LGIR document (e.g., `spec.nodes[3].config.maxIterations`) |
+| `message` | A human-readable explanation of the finding |
+| `nodeId` / `edgeId` | The ID of the node or edge that triggered the diagnostic, if applicable |
+| `capability` | `native`, `instructional`, or `unsupported`—how the selected target handles the flagged feature |
+| `fix` | An optional suggested repair: a label, a target path, and a replacement value. Click **Fix** in the compiler drawer to apply it. |
+
+**Severity rules:**
+
+- **Errors** block compilation. You must resolve every error before the Compile button produces an artifact.
+- **Warnings** and **info** messages do not block compilation. They appear in the artifact's header so the operator is aware of the conditions.
+
+Unsupported target constructs are never silently omitted—they always surface as errors or warnings with an explanation of why the target cannot support the feature.
+
+## Offline-First and PWA
+
+The Ladder Graph studio is a **Progressive Web App**. After your first visit, the service worker caches the application shell, self-hosted fonts, JSON Schema, Web Worker, and the compiled WebAssembly module. From that point on, the studio works entirely without an internet connection.
+
+All project data is stored locally in your browser:
+
+- **IndexedDB** stores project metadata, active LGIR YAML, the last-valid YAML snapshot (for error recovery), targets, template indexes, and revision indexes.
+- **OPFS** (Origin Private File System) stores revision bodies when available, with IndexedDB as a fallback.
+
+Autosave runs continuously and keeps valid and invalid revisions separate. The studio prunes to the 30 most recent revisions per project. You can export any project as a standalone LGIR YAML file and import it on any other browser or machine.
+
+<Warning>
+  Browser storage is convenient local state—it is not a durable backup. Export important workflows regularly using the **Export** option in the project menu. Clearing your browser's site data will delete all locally stored projects.
+</Warning>
+
+The studio requests **persistent browser storage** only after an explicit user action, and it always shows you your current quota and persistence state so you know exactly how much space your projects are using.

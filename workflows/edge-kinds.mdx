@@ -1,0 +1,120 @@
+---
+title: "Edge Kinds: Connecting Nodes in LGIR Workflows"
+sidebarTitle: "Edge Kinds"
+description: "Learn how data, dependency, and control edges connect nodes in an LGIR workflow. Each edge kind carries a different signal and has different validation rules."
+---
+
+Edges are the connections between nodes. Every edge has a `from` node, a `to` node, a unique `id`, and a `kind` that determines what it carries and how the compiler validates it. Ladder Graph supports three edge kinds: `data`, `dependency`, and `control`. Choosing the right kind makes your workflow's data flow explicit, helps the compiler catch mistakes before compilation, and produces clearer generated artifacts.
+
+## Data Edges
+
+A `data` edge carries a typed payload from one node to the next. You use a data edge when the downstream node genuinely consumes the upstream node's output — not just when it needs to run after it.
+
+**Key fields:**
+
+| Field | Description |
+|---|---|
+| `from` | ID of the source node. |
+| `to` | ID of the destination node. |
+| `contract` | A JSON Schema expression describing the payload's shape. |
+
+The `contract` field is optional but strongly recommended. When present, the compiler includes the contract in the generated artifact so any agent or consumer knows exactly what schema to expect. Data edges also establish topological ordering: the compiler computes a stable dependency-sorted node sequence and exposes it as `nodeOrder` in compiled code artifacts.
+
+```yaml
+- id: e1
+  from: draft
+  to: critique
+  kind: data
+  contract: "{ type: object, required: [deliverable] }"
+```
+
+---
+
+## Dependency Edges
+
+A `dependency` edge declares ordering without passing data. You use a dependency edge when a node must complete before another starts but the downstream node does not consume the upstream node's output directly.
+
+**Key fields:**
+
+| Field | Description |
+|---|---|
+| `from` | ID of the node that must complete first. |
+| `to` | ID of the node that may start after. |
+
+Dependency edges are the default edge kind — if you omit `kind` from an edge definition, the Rust compiler treats it as `dependency`. They are the right choice for approval gates, precondition checks, or any situation where sequencing matters but no data is handed off.
+
+```yaml
+- id: e2
+  from: critique
+  to: revise
+  kind: dependency
+```
+
+---
+
+## Control Edges
+
+A `control` edge carries a branch signal from a `condition` or `evaluate` node. You use a control edge to route execution to one of a node's declared branch labels.
+
+**Key fields:**
+
+| Field | Description |
+|---|---|
+| `from` | ID of the `condition` or `evaluate` source node. |
+| `to` | ID of the node to activate when this branch fires. |
+| `condition` | The branch label (e.g., `"Pass"`) matching one of the source node's `branches[].label` values. |
+
+The `condition` field must exactly match one of the upstream node's declared branch labels. If it does not, the compiler raises a validation error.
+
+```yaml
+- id: e3
+  from: quality-check
+  to: publish
+  kind: control
+  condition: "Pass"
+```
+
+---
+
+## Complete YAML Example
+
+The following example shows all three edge kinds in one workflow excerpt:
+
+```yaml
+edges:
+  - id: e1
+    from: draft
+    to: critique
+    kind: data
+    contract: "{ type: object, required: [deliverable] }"
+  - id: e2
+    from: critique
+    to: revise
+    kind: dependency
+  - id: e3
+    from: quality-check
+    to: publish
+    kind: control
+    condition: "Pass"
+```
+
+---
+
+## Validation Rules
+
+The Rust compiler enforces the following rules on every edge before a workflow can compile:
+
+| Rule | Diagnostic Code | Severity |
+|---|---|---|
+| Both `from` and `to` must reference existing node IDs. | LG141 / LG142 | error |
+| `kind` must be `data`, `dependency`, or `control`. | LG143 | error |
+| A `control` edge's `condition` must match a declared branch label on the source node. | — | error |
+| Data edges must not create a cycle in the graph. | LG150 | error |
+| Edge IDs must be unique across the workflow. | LG140 | error |
+| Edges that cross a group member boundary produce a routing diagnostic. | LG145 / LG146 | warning |
+
+The compiler also computes a full topological sort of the node graph. If the sort cannot complete — because a cycle exists — it raises LG150 with the message "Arbitrary cycles are not allowed. Place repeated work inside a structured loop node."
+
+<Warning>
+  **Back-edges and self-edges are invalid.** A back-edge routes from a downstream node back to an upstream node, creating a cycle. A self-edge routes from a node to itself. Both are rejected with a validation error (LG144 for self-edges, LG150 for cycles). If you need iteration, use a [`loop` node](/workflows/loops) instead — it provides bounded, safe repetition without introducing graph cycles.
+</Warning>

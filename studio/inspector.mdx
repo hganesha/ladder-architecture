@@ -1,0 +1,109 @@
+---
+title: "Editing Node Properties with the Inspector"
+sidebarTitle: "Inspector"
+description: "Use the inspector panel to edit a node's name, role, prompt, input and output schemas, skills, connectors, permissions, and capability customizations."
+---
+
+The inspector is the right-side panel in Ladder Graph Studio. It gives you structured form access to every field of the currently selected node — from its display name and prompt to its declared capabilities and advanced configuration. Every change you make in the inspector is immediately patched into the LGIR YAML document, so the canvas and the YAML editor always reflect your latest edits.
+
+## Opening the Inspector
+
+Click any node on the canvas to select it and open the inspector. The panel title shows **Node contract** and the node's kind (for example, `agent` or `loop`). If nothing is selected, the inspector shows a **Workflow overview** with aggregate statistics for the current document.
+
+To close the inspector, click the empty canvas background to deselect the current node, or use the inspector toggle button in the studio header.
+
+## Inspector Tabs
+
+The inspector organizes its fields into four tabs:
+
+<Tabs>
+  <Tab title="Basics">
+    Core identity and instruction fields for the node. See the sections below for full details.
+  </Tab>
+  <Tab title="Contracts">
+    **Input schema** and **Output schema** fields, each accepting a JSON Schema object. These schemas are descriptive in compiled target prompts and validated structurally by Ladder Graph. Leave a field empty if the node does not declare a schema for that boundary.
+  </Tab>
+  <Tab title="Capabilities">
+    Skills, connectors, primitive tools, and permissions. See the **Capabilities** section below.
+  </Tab>
+  <Tab title="Advanced">
+    The node's stable read-only ID, plus kind-specific configuration fields such as loop bounds, condition branches, transform operations, group execution mode, and join strategy.
+  </Tab>
+</Tabs>
+
+## Node Identity Fields
+
+Every node kind exposes these fields in the **Basics** tab:
+
+| Field | Editable | Description |
+|---|---|---|
+| **Stable node ID** | Read-only | Auto-generated identifier (e.g., `agent-3`). Appears in the **Advanced** tab. |
+| **Kind** | Display only | The node kind set at creation (e.g., `agent`, `loop`, `join`). |
+| **Title** | ✅ | Human-readable name shown on the canvas card. |
+| **Summary** | ✅ | One-line description of this node's responsibility, written to the LGIR `summary` field. |
+
+## Agent and Evaluate Nodes
+
+`agent` and `evaluate` nodes expose two additional fields in the **Basics** tab:
+
+**Role** — A concise description of the persona or function this node performs (for example, `"Senior code reviewer"` or `"Independent evaluator"`). The role is embedded verbatim in the compiled artifact so the target agent understands its identity and scope.
+
+**Prompt** — The full instruction text for this node. Write the prompt in natural language. The compiler embeds it in the generated artifact and does not modify or interpret its content. The default prompt for a new `evaluate` node is `"Evaluate the candidate against the contract and return a score with evidence."`
+
+The **Contracts** tab also exposes an **Output schema** field for these node kinds. For `evaluate` nodes, the default output schema requires `score` (number), `passed` (boolean), and `reasons` (array of strings).
+
+## Capabilities Section
+
+The **Capabilities** tab declares what the node is allowed to use. These declarations are embedded in compiled artifacts as inert metadata — Ladder Graph never installs, grants, or invokes them itself.
+
+<CardGroup cols={2}>
+  <Card title="Skills" icon="sparkles">
+    A searchable list of skill identifiers from the active target's catalog. Suggestions change automatically when you switch the compilation target (Codex, Claude, Hermes Agent, Python, or TypeScript). Recommended skills are highlighted based on the node's role. You can also type a custom skill ID in the input field at the bottom of the list.
+  </Card>
+  <Card title="Tools" icon="wrench">
+    Primitive tool declarations entered as a comma-separated list (for example, `read, edit, search`). These represent low-level capabilities the node requires, independent of the skill catalog.
+  </Card>
+  <Card title="Connectors" icon="plug">
+    External service connectors and MCP server identifiers. The catalog includes OpenRouter profiles (model slugs, endpoints, and supported parameters) as research snapshots. Verify availability and credentials before use — Ladder Graph never stores provider credentials.
+  </Card>
+  <Card title="Permissions" icon="shield">
+    Declared permission requirements entered as a comma-separated list. These surface in compiled artifacts as explicit requirements the host must satisfy before running the workflow.
+  </Card>
+</CardGroup>
+
+## Capability Customizations
+
+Every skill or connector you select resolves to a **base template** plus **node-specific instructions**, both stored directly in the LGIR `customizations` record. This means compiled artifacts are fully reproducible without depending on any hidden studio state.
+
+To customize a capability:
+
+<Steps>
+  <Step title="Select the skill or connector">
+    Toggle a skill or connector in the Capabilities tab. A customization entry is automatically created with a sensible default.
+  </Step>
+  <Step title="Open the customization panel">
+    Scroll down to the **Template customizations** section. Click the disclosure row for the skill or connector you want to configure.
+  </Step>
+  <Step title="Choose a base template">
+    Use the **Base template** dropdown to pick from the available templates for that capability. Custom identifiers start from a safe generic contract and can be rebased onto any available template.
+  </Step>
+  <Step title="Edit the instructions">
+    Edit the **Customized instructions** textarea. These instructions are embedded verbatim in the generated artifact alongside the template text.
+  </Step>
+</Steps>
+
+## Config Fields (Advanced Tab)
+
+The **Advanced** tab shows kind-specific configuration fields in addition to the read-only node ID:
+
+| Node kind | Available config fields |
+|---|---|
+| `condition` | Expression (the boolean expression that selects a branch) |
+| `loop` | Body node IDs, Exit condition, Maximum iterations (1–100), On exhausted (Stop / Warn and return best / Continue) |
+| `join` | Join policy (All successful / All settled / First result) |
+| `transform` | Operation (select / rename / merge / filter / deduplicate / sort / slice), Declarative expression |
+| `group` | Execution mode (Parallel / Sequential), Exit strategy (Aggregate member outputs / Serialize member outputs), Member node IDs |
+
+<Tip>
+  Inspector changes sync to LGIR immediately on blur — you do not need to press a Save button. Switch to Split mode to watch the YAML patch in real time as you type in the inspector. If you make an edit that produces a validation error, the diagnostics drawer will highlight it with a stable error code and a suggested repair.
+</Tip>

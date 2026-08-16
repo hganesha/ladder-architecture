@@ -1,0 +1,115 @@
+{
+  "projectType": "frontend",
+  "projectName": "Ladder Graph",
+  "projectDescription": "An offline-first visual compiler for designing, validating, and compiling deterministic agent workflows into self-contained artifacts for Codex, Claude, Hermes Agent, Python, or TypeScript.",
+  "theme": "willow",
+  "primaryColor": "#e59254",
+  "lightColor": "#0c0c14",
+  "darkColor": null,
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "key-concepts"
+            ]
+          },
+          {
+            "group": "Studio",
+            "pages": [
+              "studio/canvas",
+              "studio/inspector",
+              "studio/yaml-editor",
+              "studio/palette",
+              "studio/templates"
+            ]
+          },
+          {
+            "group": "Workflows",
+            "pages": [
+              "workflows/node-kinds",
+              "workflows/edge-kinds",
+              "workflows/loops",
+              "workflows/groups",
+              "workflows/transforms",
+              "workflows/visual-macros"
+            ]
+          },
+          {
+            "group": "Compiling",
+            "pages": [
+              "compiling/targets",
+              "compiling/diagnostics",
+              "compiling/capabilities",
+              "compiling/artifacts"
+            ]
+          },
+          {
+            "group": "Data & Storage",
+            "pages": [
+              "data/persistence",
+              "data/import-export",
+              "data/security"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "LGIR Reference",
+        "groups": [
+          {
+            "group": "Schema",
+            "pages": [
+              "lgir/overview",
+              "lgir/workflow",
+              "lgir/nodes",
+              "lgir/edges"
+            ]
+          },
+          {
+            "group": "Compiler API",
+            "pages": [
+              "lgir/compiler-api",
+              "lgir/analysis-result",
+              "lgir/compile-result"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Visual drag-and-drop canvas and synchronized LGIR YAML editor",
+    "Eleven canonical node kinds: input, output, agent, tool, transform, condition, evaluate, approval, join, loop, group, subgraph",
+    "Structured bounded loops with maxIterations and exhaustion policies",
+    "Sequential and parallel execution groups with aggregate or serialize exits",
+    "Safe declarative transforms: select, rename, merge, filter, deduplicate, sort, slice",
+    "Visual macros for Parallel, Pipeline, Reduce, and Verify topologies",
+    "Deterministic compilation to Codex, Claude, Hermes Agent, Python, and TypeScript targets",
+    "DAG validation, diagnostics with stable codes, severity levels, and safe repair suggestions",
+    "Target-aware capability catalog for skills, tools, connectors, and permissions",
+    "16 outcome-led starter templates and 68 editable role templates",
+    "IndexedDB and OPFS offline-first persistence, revision history, import/export, and PWA support",
+    "Rust/WebAssembly compiler core with TypeScript parity fallback",
+    "No accounts, no telemetry, no model or runtime connections"
+  ],
+  "publicApiSurface": [
+    "analyze(yaml: string, target?: Target): AnalysisResult",
+    "compile(yaml: string, target: Target): CompileResult",
+    "format(yaml: string): FormatResult",
+    "migrate(yaml: string, toVersion: string): MigrationResult",
+    "Target: 'codex' | 'claude' | 'hermes' | 'python' | 'typescript'",
+    "NodeKind: 'input' | 'output' | 'agent' | 'tool' | 'transform' | 'condition' | 'evaluate' | 'approval' | 'join' | 'loop' | 'group' | 'subgraph'",
+    "EdgeKind: 'data' | 'dependency' | 'control'",
+    "LGIR YAML schema: apiVersion ladder.dev/v1alpha1, kind Workflow",
+    "Diagnostic: code, severity, path, nodeId, edgeId, message, capability, fix",
+    "CompileResult: content, suggestedFilename, mimeType, sourceHash, compilerVersion, adapterVersion, capabilityReport, diagnostics",
+    "CapabilityReport: target, native[], instructional[], unsupported[]",
+    "ProjectRecord: id, name, yaml, lastValidYaml, target, createdAt, updatedAt"
+  ]
+}

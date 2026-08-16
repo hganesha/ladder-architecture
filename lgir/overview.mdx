@@ -1,0 +1,88 @@
+---
+title: "LGIR v1alpha1: The Ladder Graph Workflow Format"
+sidebarTitle: "LGIR Overview"
+description: "LGIR (Ladder Graph Intermediate Representation) is the canonical YAML format for Ladder Graph workflows. Learn its structure, versioning, and portability guarantees."
+---
+
+LGIR (Ladder Graph Intermediate Representation) is the plain-YAML document format that Ladder Graph uses as its single source of truth for agent workflows. Every canvas action, inspector edit, and template import produces or modifies an LGIR document. When you compile a workflow to Codex, Claude, Hermes Agent, Python, or TypeScript, the compiler reads LGIR as its input and always produces the same artifact for the same document. LGIR is designed to be readable, diffable, and portable: it lives in version control, travels as a file, and requires no special tooling to open.
+
+## Document Structure
+
+Every LGIR document contains exactly four top-level keys: `apiVersion`, `kind`, `metadata`, and `spec`. The minimal skeleton looks like this:
+
+```yaml
+apiVersion: ladder.dev/v1alpha1
+kind: Workflow
+metadata:
+  name: my-workflow
+  title: My Workflow
+  description: A short description.
+  version: 1.0.0
+spec:
+  objective: "A verifiable outcome statement."
+  nodes: []
+  edges: []
+```
+
+`apiVersion` and `kind` identify the document type and tell the compiler which validation rules to apply. `metadata` holds human-facing fields and a stable slug identifier. `spec` is where all workflow logic lives: the objective, the node list, the edge list, and optional inputs, outputs, and policies.
+
+## Versioning
+
+The current LGIR version is `ladder.dev/v1alpha1`. The compiler rejects any document whose `apiVersion` does not match a known value — you will receive a `LG100` error pointing to `/apiVersion` with a clear message. To upgrade an older document, use the `migrate` compiler operation and pass the target version string:
+
+```typescript
+migrate(yaml: string, toVersion: string): MigrationResult
+```
+
+The `migrate` operation re-parses the document, sets `apiVersion` to the target, and returns the normalized YAML. If no migration path exists to the requested version, the operation returns an error diagnostic rather than silently producing a broken document.
+
+## Portability
+
+LGIR files are standard YAML with no proprietary extensions. You can:
+
+- **Store them in version control.** Each file is a plain text artifact that diffs cleanly between commits.
+- **Share them as files.** The studio supports explicit import and export; files can be opened in any text editor.
+- **Edit them by hand.** The YAML editor in the studio and any external editor work identically against the same document.
+- **Round-trip without loss.** The studio patches the YAML CST directly rather than maintaining a parallel graph database, so every edit is immediately reflected in the document.
+
+<Note>
+  Imports are capped at 2 MB and 1,000 nodes. Custom YAML tags, anchors, aliases, and external `$ref` URLs are rejected at parse time with specific diagnostic codes.
+</Note>
+
+## Rust as Semantic Authority
+
+Ladder Graph ships two enforcement layers that work together:
+
+1. **JSON Schema** at `public/schema/lgir-v1alpha1.schema.json` provides the portable authoring contract. Editor tooling — including the studio's CodeMirror integration — uses this schema to drive autocompletion and inline validation.
+
+2. **The Rust/WASM compiler** is the semantic authority. It enforces constraints that JSON Schema alone cannot express: graph topology (no cycles, no self-edges), loop ownership (body references must exist, `maxIterations` must be 1–100), group membership (a node cannot belong to more than one group, groups cannot nest), target support per node kind, and the deterministic topological ordering that all compiled artifacts depend on.
+
+The TypeScript types in `src/types.ts` mirror the compiler's result boundary. They describe what the worker returns, not what is valid — the Rust compiler decides validity.
+
+<Tip>
+  If WebAssembly cannot initialize in a browser, the worker falls back to a TypeScript parity compiler so your projects remain recoverable. Production builds always prefer the Rust module.
+</Tip>
+
+## Determinism
+
+Given the same LGIR YAML, the compiler always produces the same output. This is a hard guarantee, not a best-effort property:
+
+- The compiler normalizes the document into a canonical form before any analysis.
+- Topological ordering is computed deterministically using stable `BTreeMap` and `BTreeSet` collections.
+- The `sourceHash` field in `CompileResult` and `AnalysisResult` is a SHA-256 of the serialized normalized document. You can use this hash to confirm that two artifacts were compiled from identical source.
+
+```typescript
+interface CompileResult {
+  ok: boolean;
+  sourceHash: string;      // SHA-256 of the normalized LGIR document
+  compilerVersion: string; // Rust crate version
+  adapterVersion: string;  // e.g. "codex-skill-v1" or "python-data-v1"
+  // ...
+}
+```
+
+## Related Pages
+
+- [Workflow](/lgir/workflow) — top-level document fields, metadata, policies, and I/O declarations
+- [Nodes](/lgir/nodes) — shared node fields, all 12 node kinds, and kind-specific config
+- [Edges](/lgir/edges) — data, dependency, and control edge fields and validation rules

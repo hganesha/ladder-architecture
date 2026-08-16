@@ -1,0 +1,251 @@
+---
+title: "LGIR Node Schema: Fields, Kinds, and Config"
+sidebarTitle: "Nodes"
+description: "Complete field reference for LGIR nodes. Covers shared fields (id, kind, name, prompt, capabilities) and kind-specific config for all 12 node types."
+---
+
+Nodes are the building blocks of every Ladder Graph workflow. Each node in `spec.nodes` describes a discrete unit of work — an agent, a data transform, a branching condition, a join point, or a structural boundary — and the compiler validates every node against its declared `kind` before producing any output. This page covers the fields every node shares, the `capabilities` object that declares skill and connector requirements, and the `config` fields that are specific to each node kind.
+
+## Shared Node Fields
+
+Every node, regardless of kind, supports the following fields.
+
+<ParamField path="id" type="string" required>
+  A unique identifier for the node within the workflow. Use lowercase letters, digits, and hyphens. Duplicate IDs produce a `LG110` error. All edge `from` and `to` references, loop `body` lists, and group `members` lists use this value.
+</ParamField>
+
+<ParamField path="kind" type="NodeKind" required>
+  The type of node. Must be one of: `input`, `output`, `agent`, `tool`, `transform`, `condition`, `evaluate`, `approval`, `join`, `loop`, `group`, `subgraph`. Unknown kinds produce a `LG111` error.
+</ParamField>
+
+<ParamField path="name" type="string">
+  A human-readable display name shown in the studio canvas and in compiled artifact headings. If omitted, the compiler falls back to `id`.
+</ParamField>
+
+<ParamField path="summary" type="string">
+  A one-line description of the node's purpose embedded in compiled Markdown as the node's purpose bullet.
+</ParamField>
+
+<ParamField path="role" type="string">
+  Applicable to `agent` and `evaluate` nodes. Describes the agent's narrow responsibility within the workflow, for example `Technical Writer` or `Security Reviewer`. Omitting `role` on an `agent` node produces a `LG113` warning.
+</ParamField>
+
+<ParamField path="prompt" type="string">
+  Applicable to `agent` and `evaluate` nodes. The task instructions delivered verbatim to the model. Both `agent` and `evaluate` nodes require a non-empty `prompt`; omitting it produces a `LG112` error.
+</ParamField>
+
+<ParamField path="inputSchema" type="object">
+  A JSON Schema object describing the node's expected input shape. Stored in LGIR and forwarded to compiled code modules; not evaluated at compile time.
+</ParamField>
+
+<ParamField path="outputSchema" type="object">
+  A JSON Schema object describing the node's expected output shape. Embedded in compiled Markdown under an **Expected output contract** section when present. Also forwarded to code modules.
+</ParamField>
+
+<ParamField path="capabilities" type="object">
+  Declares the skills, tools, connectors, permissions, and customizations this node requires. See [Capabilities Object](#capabilities-object) below.
+</ParamField>
+
+<ParamField path="config" type="object">
+  Kind-specific configuration. Only relevant for `transform`, `condition`, `evaluate`, `join`, `loop`, and `group` nodes. See [Kind-Specific Config](#kind-specific-config) below.
+</ParamField>
+
+<ParamField path="position" type="object">
+  The `{x, y}` canvas coordinates of the node. Stored in LGIR so the studio can restore graph layout after import, but not semantically significant — the compiler ignores it during validation and compilation.
+</ParamField>
+
+## Capabilities Object
+
+The `capabilities` object on an `agent`, `evaluate`, or `tool` node declares what that node needs from its runtime environment. The studio uses the declared target (Codex, Claude, Hermes Agent, Python, or TypeScript) to suggest relevant catalog entries and highlight recommendations inferred from the node's role.
+
+<ParamField path="capabilities.skills" type="string[]">
+  A list of skill identifiers this node requires, for example `["implementation", "code-review"]`. In compiled Markdown, skills appear under **Required skills**. In Python and TypeScript modules, they appear in the capability manifest for that node.
+</ParamField>
+
+<ParamField path="capabilities.tools" type="string[]">
+  Primitive tool identifiers, for example `["web_search", "mcp:github"]`. A `tool` node with an empty tools list produces a `LG114` warning. Tools named `mcp:*` trigger a `LG201` connector advisory when a target is selected.
+</ParamField>
+
+<ParamField path="capabilities.connectors" type="string[]">
+  Connector identifiers, for example `["mcp:github", "mcp:linear"]`. Connector requirements are documented in compiled artifacts but not invoked by the compiler. A `LG201` diagnostic reminds you that connector requirements are instructional, not mechanically enforced.
+</ParamField>
+
+<ParamField path="capabilities.permissions" type="string[]">
+  Permission identifiers required for this node to operate, for example `["read:repo", "write:pr"]`. Listed verbatim in compiled Markdown and code modules as inert declarations.
+</ParamField>
+
+<ParamField path="capabilities.customizations" type="Record<string, object>">
+  A map from skill or connector identifier to a customization record. Each record contains a `template` (the base template identifier to rebase from) and `instructions` (editable task-specific guidance). Customizations are embedded in compiled artifacts so generated outputs are fully reproducible without hidden studio state.
+
+  <Expandable title="Customization record fields">
+    <ParamField path="template" type="string">
+      The identifier of the pre-built base template this customization extends. If empty, the compiler uses the skill or connector ID as a fallback.
+    </ParamField>
+
+    <ParamField path="instructions" type="string">
+      The editable instructions that override or extend the base template for this node. Embedded verbatim in compiled Markdown capability template sections and code module capability manifests.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<Warning>
+  Catalog entries are authoring suggestions, not an inventory of installed capabilities. Ladder Graph does not connect to a harness, inspect user configuration, install skills, grant permissions, or invoke connectors. Always verify that required skills and connectors are available in your target environment before running a compiled artifact.
+</Warning>
+
+## Kind-Specific Config
+
+The `config` object is only meaningful for the six node kinds described below. For all other kinds — `input`, `output`, `agent`, `tool`, `approval`, `subgraph` — `config` is accepted but ignored by the compiler.
+
+### transform
+
+A `transform` node applies one of seven declarative operations to its input data. It does not execute arbitrary code.
+
+<ParamField path="config.operation" type="string" required>
+  The transform operation to apply. Must be one of: `select`, `rename`, `merge`, `filter`, `deduplicate`, `sort`, `slice`. An invalid value produces a `LG115` error.
+</ParamField>
+
+<ParamField path="config.expression" type="string">
+  The expression or field specification for the operation, interpreted by the runtime according to the declared operation type.
+</ParamField>
+
+### condition
+
+A `condition` node evaluates an expression and routes execution to exactly one declared branch via a `control` edge.
+
+<ParamField path="config.expression" type="string">
+  The boolean or value expression to evaluate, for example `score >= 0.8`. The result is matched against branch labels to select the outgoing control edge.
+</ParamField>
+
+<ParamField path="config.branches" type="Branch[]">
+  An ordered list of branch objects. Each branch has a `label` (matched by outgoing `control` edges) and a `when` condition expression.
+
+  <Expandable title="Branch fields">
+    <ParamField path="label" type="string">
+      A short identifier for this branch, for example `pass` or `fail`. Outgoing `control` edges must have a `condition` field that matches one of these labels.
+    </ParamField>
+
+    <ParamField path="when" type="string">
+      The condition expression that activates this branch, for example `score >= 0.8`.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### evaluate
+
+An `evaluate` node is a scored review agent. In addition to the shared `prompt` and `role` fields, it supports one config field.
+
+<ParamField path="config.threshold" type="number">
+  A quality threshold between `0.0` and `1.0`. The evaluator's score is compared against this value to determine whether downstream nodes (such as a `loop` exit condition) should proceed.
+</ParamField>
+
+### join
+
+A `join` node waits for one or more upstream branches to complete before releasing execution downstream.
+
+<ParamField path="config.join" type="string" required>
+  The join policy. Must be one of:
+  - `all` — wait for every incoming branch to complete successfully.
+  - `allSettled` — wait for every incoming branch to finish, regardless of success or failure.
+  - `first` — proceed as soon as the first incoming branch completes.
+
+  An invalid value produces a `LG124` error.
+</ParamField>
+
+### loop
+
+A `loop` node repeats a set of body nodes until an exit condition is met or the iteration limit is reached.
+
+<ParamField path="config.body" type="string[]" required>
+  An ordered list of node IDs to execute on each iteration. Must reference at least one existing node (validated as `LG122` and `LG123`). Back-edges and self-edges within the loop are not allowed.
+</ParamField>
+
+<ParamField path="config.exitCondition" type="string" required>
+  A reference to a condition or evaluator result that the loop checks after each iteration, for example `critic.score >= 0.8`. An empty `exitCondition` produces a `LG121` error.
+</ParamField>
+
+<ParamField path="config.maxIterations" type="integer" required>
+  The maximum number of iterations the loop may execute. Must be between `1` and `100` inclusive. Values outside this range produce a `LG120` error with a suggested repair that sets the value to `3`.
+</ParamField>
+
+<ParamField path="config.onExhausted" type="string" default="stop">
+  What to do when the loop reaches `maxIterations` without satisfying `exitCondition`. Must be one of `stop`, `continue`, or `warn`.
+</ParamField>
+
+<Note>
+  All loop constructs are compiled as explicit bounded instructions. No target (Codex, Claude, Hermes Agent, Python, or TypeScript) enforces the loop mechanically at runtime — the `LG200` diagnostic reminds you that loop behavior is instructional. The compiler never generates back-edges in the output artifact.
+</Note>
+
+### group
+
+A `group` node is a visible bounding container. It owns a set of member nodes, runs them in a declared execution mode, and collects their outputs before releasing any result downstream.
+
+<ParamField path="config.members" type="string[]" required>
+  An ordered list of node IDs that belong to this group. Member IDs must be unique within the list (`LG128`), each member must exist (`LG129`), and a group may not contain itself or another group (`LG132`). A node may belong to at most one group (`LG133`).
+</ParamField>
+
+<ParamField path="config.execution" type="string" required>
+  How members are scheduled. Must be `sequential` (members run in `members` order, each waiting for the previous) or `parallel` (all members start simultaneously). An invalid value produces `LG126`.
+</ParamField>
+
+<ParamField path="config.exit" type="string" required>
+  How member outputs are combined before the group releases its result downstream. Must be `aggregate` (combine all outputs into a single collection) or `serialize` (emit outputs in order). An invalid value produces `LG127`.
+</ParamField>
+
+<Warning>
+  Edges that cross a group member boundary produce `LG145` and `LG146` diagnostics. Route inputs to the group node and outputs from the group node — do not connect external nodes directly to or from individual members.
+</Warning>
+
+## YAML Example: Agent Node with Capabilities
+
+The following example shows a fully specified `agent` node with skills, a connector, a customization, and an output schema.
+
+```yaml
+- id: implementer
+  kind: agent
+  name: Implementation Specialist
+  role: Senior Software Engineer
+  summary: Implements the feature described in the specification.
+  prompt: >
+    Read the feature specification from the previous node's output.
+    Produce a complete, tested implementation that satisfies every
+    acceptance criterion. Explain your design decisions.
+  capabilities:
+    skills:
+      - implementation
+      - code-review
+    connectors:
+      - mcp:github
+    permissions:
+      - read:repo
+      - write:pr
+    customizations:
+      implementation:
+        template: software-implementation-v1
+        instructions: >
+          Follow the repository's existing coding conventions.
+          Write unit tests for every public function.
+          Do not introduce new dependencies without prior approval.
+      mcp:github:
+        template: github-connector-v1
+        instructions: >
+          Use only the repositories listed in the workflow input.
+          Never force-push to protected branches.
+  outputSchema:
+    type: object
+    properties:
+      files:
+        type: array
+        items:
+          type: object
+          properties:
+            path:
+              type: string
+            content:
+              type: string
+      designNotes:
+        type: string
+    required: [files]
+  position:
+    x: 480
+    y: 200
+```

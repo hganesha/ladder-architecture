@@ -1,0 +1,115 @@
+---
+title: "Starting from a Template in Ladder Graph"
+sidebarTitle: "Templates"
+description: "Choose from 16 outcome-led starter workflows and 68 role templates to jumpstart your workflow design. Templates are fully editable and stored locally."
+---
+
+Templates give you a running start. Instead of building a workflow from scratch, you can open a pre-wired graph that already encodes a proven orchestration shape, a realistic set of roles and contracts, and properly bounded control structures. Every template is a complete, compile-ready LGIR document — open one, review the graph, adapt the roles and prompts in the inspector, and you are ready to compile in minutes.
+
+## Welcome Screen
+
+When you first open Ladder Graph, the welcome screen displays the starter template library organized by area. Click any template card to open it directly in the studio, fully populated with nodes, edges, and role configurations. You can also click **New workflow** to start from a blank canvas.
+
+The welcome screen also shows up to five **Recent projects** saved in your browser under the active template area panel, so you can quickly resume where you left off.
+
+## Template Areas
+
+The library organizes its 16 starter workflows into nine areas, accessible from the tab strip at the top of the welcome screen:
+
+<CardGroup cols={3}>
+  <Card title="Core patterns" icon="sparkles">
+    Reusable orchestration shapes for critique and bounded refinement. The foundational topologies every other area builds on.
+  </Card>
+  <Card title="Research" icon="flask-conical">
+    Evidence collection, literature synthesis, gap analysis, and explicit source-quality gates.
+  </Card>
+  <Card title="Software engineering" icon="code-2">
+    Requirements, architecture, implementation, testing, bug resolution, accessibility, security, and release.
+  </Card>
+  <Card title="Product management" icon="box">
+    Opportunity framing, feature definition, feasibility review, and measurable decision outputs.
+  </Card>
+  <Card title="Product design" icon="pen-tool">
+    Journey audits, critique, accessibility review, redesign briefs, and validation plans.
+  </Card>
+  <Card title="Go-to-market" icon="megaphone">
+    Customer urgency, positioning, competitive framing, and falsifiable launch experiments.
+  </Card>
+  <Card title="Security" icon="shield-check">
+    Threat modeling, privacy review, mitigations, incident response, and readiness gates.
+  </Card>
+  <Card title="Multimodal" icon="images">
+    Image, video, speech, and transcription routing with cost, safety, and provenance gates.
+  </Card>
+  <Card title="Architecture & design" icon="building-2">
+    Building design, structural engineering, MEP, code compliance, access, performance, cost, and coordinated delivery.
+  </Card>
+</CardGroup>
+
+## Core Shapes
+
+The three foundational orchestration shapes appear in the **Core patterns** area and are used as building blocks in many of the more complex area templates:
+
+### Draft → Critique → Bounded Revision
+
+A **Create draft** agent produces the first version. An **Independent critique** evaluator scores it against the contract and returns defects with evidence. A **Targeted revision** agent addresses only the evidenced defects. A **Quality loop** node (with `maxIterations: 3` and `onExhausted: stop`) bounds the critique-revise cycle until the evaluator passes. The loop exits on `critique.passed == true` and feeds the **Approved deliverable** output node.
+
+Use this shape any time you need a deliverable that must meet an explicit quality threshold — document generation, code authoring, design iteration, or analysis refinement.
+
+### Parallel Implementation and Risk Review → Join
+
+A **Feature brief** input fans out simultaneously to an **Implementation lead** (delivery and architecture) and a **Risk reviewer** (security and reliability). Both agents work independently in parallel. A **Review barrier** join node (`join: all`) waits for both branches to complete before passing their combined outputs to a **Decision synthesis** agent. The synthesized plan flows to the **Reviewed plan** output.
+
+Use this shape when independent delivery and risk perspectives must both be captured and reconciled before acting. The parallel structure prevents the risk review from being skipped or condensed.
+
+### Evidence Research → Synthesis → Evaluation
+
+A **Research question** input fans out to three parallel agents: **Primary sources**, **Contradictory evidence**, and **Recency check**. An **Evidence barrier** join (`join: allSettled`) collects all three branches. A **Cited synthesis** agent writes only from supported claims, placing source identifiers after each factual statement. A **Source-quality gate** evaluator (`threshold: 0.9`) passes only when every material claim is backed by the supplied evidence. The result flows to the **Verified answer** output.
+
+Use this shape for any research task where claim-level sourcing and coverage of contradictory evidence are non-negotiable.
+
+## Opening a Template
+
+<Steps>
+  <Step title="Open the welcome screen">
+    If you are already in the studio, click the Ladder Graph logo or navigate back to the welcome screen from the project menu.
+  </Step>
+  <Step title="Select an area">
+    Click any area tab in the template library tab strip to filter the visible workflows.
+  </Step>
+  <Step title="Click a template card">
+    Click the card for the workflow you want. The studio opens immediately with the full graph pre-populated — nodes, edges, roles, prompts, schemas, and capability declarations all in place.
+  </Step>
+  <Step title="Adapt the workflow">
+    Edit any node's role, prompt, or capabilities in the inspector. Add or remove nodes and edges on the canvas. Switch to YAML mode to make bulk edits. All changes are yours — the original template is not modified.
+  </Step>
+</Steps>
+
+## Role Templates
+
+In addition to the 16 full workflow templates, Ladder Graph ships **68 agent role templates** organized into four groups. These are available in the palette's **Agent templates** section and can also be applied to any existing agent or evaluate node via the inspector's **Role** field suggestions.
+
+| Group | Count | Paths covered |
+|---|---|---|
+| **Core roles** | 8 | Implementer, Test Engineer, Researcher, Critic/Evaluator, Product Manager, Designer, GTM Specialist, Security Reviewer |
+| **Software development** | 20 | Requirements, architecture, stack governance, feature development, API design, database engineering, frontend, integration, testing, security audit, performance, accessibility, code review, refactoring, legacy analysis, documentation, DevOps/SRE, incident response, context management, developer onboarding |
+| **Security specialists** | 20 | Penetration testing, red team, SOC analysis, threat intelligence, DFIR, malware analysis, cloud security, IAM, privacy, GRC, vendor risk, AppSec, DevSecOps, vulnerability management, cryptography, OT/ICS, physical security, security awareness, zero trust, incident communications |
+| **Architecture & design specialists** | 20 | Building design, structural engineering, geotechnical, MEP, fire protection, facade engineering, landscape architecture, interior design, FF&E, kitchen & bath, code compliance, sustainability, universal design, acoustics, lighting, BIM coordination, cost estimation, construction management, historic preservation, space planning |
+
+Every role template includes a pre-written role name, a narrowly scoped prompt, a skill list, a tool list, and where appropriate, recommended connectors and declared permissions. When you add a role template from the palette, the full configuration is written into a new `agent` node in LGIR.
+
+## User Templates
+
+You can save any workflow as a personal template from the project menu (**Project → Save as template**). User templates appear in the welcome screen alongside the built-in templates under the area you assign. You can rename, overwrite, or delete user templates at any time from the same menu.
+
+There is no limit on the number of user templates you can save.
+
+## Editing a Template
+
+Templates are not locked. Every node, edge, prompt, schema, capability, and config field is fully editable after you open a template. Edit visually on the canvas, use the inspector for field-level changes, or switch to YAML mode for bulk edits.
+
+If you want to preserve the original template for reference, duplicate the project from the project menu before making changes.
+
+<Note>
+  All templates — both built-in and user-saved — are stored locally in your browser's IndexedDB. There is no cloud sync, no account required, and no data leaves your device. If you clear your browser's site data, user templates will be removed. Export any template you want to preserve using **Project → Export YAML** before clearing browser storage.
+</Note>

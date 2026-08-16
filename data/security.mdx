@@ -1,0 +1,97 @@
+---
+title: "Security Model and Input Safety in Ladder Graph"
+sidebarTitle: "Security"
+description: "Ladder Graph treats imported YAML as data, never code. Strict limits on imports, YAML features, and generated output prevent injection, execution, and credential exposure."
+---
+
+Ladder Graph is a compiler, not a runtime. It parses YAML you supply, validates it against the LGIR schema, and generates a self-contained Markdown or source-code artifact — nothing more. Understanding where the security boundary sits helps you use Ladder Graph safely and explains why certain YAML features are deliberately rejected. This page describes the threat model, import limits, output guarantees, credential policy, and browser security posture.
+
+## Core Security Principle
+
+Ladder Graph never executes nodes, calls model providers, issues shell commands, invokes MCP operations, or stores credentials. Every piece of user-supplied input — imported files, typed YAML, inspector field edits — is treated as structured data to be validated and compiled, not as instructions to be carried out.
+
+This principle is enforced structurally. The compiler pipeline is:
+
+```text
+YAML bytes
+  → security limits and parse
+  → typed LGIR document
+  → ID / contract / control-flow validation
+  → deterministic topological order
+  → source hash and capability analysis
+  → target adapter (Codex / Claude / Hermes / Python / TypeScript)
+  → one self-contained Markdown or source-code artifact
+```
+
+At no step does the pipeline perform network I/O, read the file system, or evaluate node expressions. The Rust WebAssembly core that owns this pipeline runs in a sandboxed Web Worker with no access to the DOM or browser storage.
+
+## Import Limits
+
+Ladder Graph enforces strict limits on every file you import. These limits apply equally to files loaded via the Import dialog, files dragged onto the studio, and YAML pasted directly into the editor.
+
+| Constraint | Limit or action |
+|---|---|
+| Maximum file size | 2 MB |
+| Maximum nodes | 1,000 |
+| Custom YAML tags | Rejected |
+| YAML anchors and aliases | Rejected |
+| External references | Rejected |
+| Arbitrary cycles | Error — compilation blocked |
+| Duplicate node or edge IDs | Error — compilation blocked |
+| Missing edge endpoints | Error — compilation blocked |
+
+Custom YAML tags, anchors, and aliases are rejected at the parse stage before any content reaches the compiler. This prevents parser denial-of-service (e.g., billion-laughs via alias expansion) and eliminates a class of injection vectors that exploit YAML's more permissive features. External references are rejected for the same reason — Ladder Graph never fetches remote content.
+
+The 2 MB and 1,000-node caps protect the browser's UI thread and Web Worker. Workflows approaching the node limit are view-only; the 200-node CI baseline is the interactive performance target.
+
+## Generated Artifacts
+
+Generated Markdown and source-code artifacts are rendered as text only — they are never injected as raw HTML into the browser or executed as scripts.
+
+Generated Python (`.ladder.py`) and TypeScript (`.ladder.ts`) modules contain:
+
+- The normalized workflow document
+- Stable topological node order
+- An explicit dependency map
+- A per-node capability-template manifest
+- Pure `ready_nodes` / `readyNodes` and capability lookup helpers
+
+They do **not** import model providers, invoke connectors, call shell commands, evaluate node expressions, or supply an execution runtime. A host application must explicitly bind and authorize any handlers — the generated module is inert data.
+
+Generated Codex, Claude, and Hermes Markdown artifacts name required skills and connectors and embed custom instructions, but do not grant those capabilities. Users must review workflows before installing them as skills.
+
+## Credentials
+
+LGIR deliberately has no credential fields. Model identifiers such as OpenRouter model slugs are capability declarations — they name a model that a harness should use, not an API key that grants access to it. Connector identifiers work the same way.
+
+<Warning>
+Never store API keys, secrets, tokens, or passwords in your LGIR YAML. Credential values will appear verbatim in every compiled artifact — Markdown, Python, and TypeScript — and could be inadvertently shared when you export a workflow, commit it to version control, or send it to a colleague. If you have already committed a secret, rotate it immediately and purge it from your git history.
+</Warning>
+
+OpenRouter profiles included in the template catalog are research snapshots of model slugs, endpoints, and supported parameters. They must be independently verified before use, and credentials must always be supplied out-of-band by the host application.
+
+## Content Security Policy
+
+The Ladder Graph PWA is served with a strict Content Security Policy and security headers. Key properties:
+
+- **No external scripts** — no third-party JavaScript is loaded at runtime. The application shell, schema, self-hosted fonts, Web Worker, and WebAssembly module are all precached from the same origin during service worker installation.
+- **No CDN dependency** — after the first load, the app runs entirely from your browser's cache. There is no external host whose compromise could inject content into Ladder Graph.
+- **Self-hosted assets** — fonts and static assets are served from the application origin, not from a font CDN or external CDN.
+
+## Browser Storage
+
+Projects are stored in your browser's IndexedDB and OPFS. No project data, YAML content, revision history, or template customization is transmitted to any server at any point.
+
+Ladder Graph collects no telemetry. There is no analytics SDK, error-reporting endpoint, or usage-tracking pixel. The only network requests made after the initial page load are service worker cache validation requests to the application origin itself.
+
+See [Persistence](/data/persistence) for the full details of how project data is structured and stored locally.
+
+## Offline Operation
+
+By design, Ladder Graph has no network dependency after the first load. The service worker precaches everything the app needs to run — shell, schema, fonts, worker, and WebAssembly — and serves them from cache on every subsequent visit. There is no backend to compromise and no server-side session to hijack.
+
+This is a deliberate architectural choice. An offline-first compiler with no backend surface area eliminates an entire category of server-side vulnerabilities: there is no API to authenticate against, no database to inject into, and no session token to steal.
+
+<Note>
+The portable authoring contract for LGIR is defined in `public/schema/lgir-v1alpha1.schema.json`. This JSON Schema is checked in to the repository, precached by the service worker, and used by the CodeMirror editor for inline validation. The Rust compiler is the semantic authority — it enforces graph topology, structured loop and group ownership, target compatibility, and deterministic ordering beyond what JSON Schema validation alone can express.
+</Note>

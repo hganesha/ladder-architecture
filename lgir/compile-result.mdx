@@ -1,0 +1,152 @@
+---
+title: "CompileResult: Artifact Output from the Compiler"
+sidebarTitle: "CompileResult"
+description: "CompileResult is returned by compile(). It contains the artifact content, filename, MIME type, source hash, version strings, capability report, and diagnostics."
+---
+
+`CompileResult` is the object returned by [`compiler.compile()`](/lgir/compiler-api#compile-yaml-target). When compilation succeeds, it carries everything you need to save or distribute the artifact: the full content string, the suggested file path, the MIME type, a reproducible source hash, version metadata for the compiler and adapter, a capability report describing how the target handles each workflow construct, and any warnings or info diagnostics generated during the process.
+
+## CompileResult Fields
+
+<ResponseField name="ok" type="boolean" required>
+  `true` if compilation succeeded — meaning no error-severity diagnostics were present in the workflow. When `ok` is `false`, `content` is an empty string and you should inspect `diagnostics` to understand what blocked compilation. Always check `ok` before reading `content`.
+</ResponseField>
+
+<ResponseField name="content" type="string" required>
+  The full artifact text. For Markdown targets (`codex`, `claude`, `hermes`) this is a self-contained instruction document with YAML frontmatter. For `python`, it is an importable `.ladder.py` data module. For `typescript`, it is a typed `.ladder.ts` module. Empty when `ok` is `false`.
+</ResponseField>
+
+<ResponseField name="suggestedFilename" type="string" required>
+  The recommended file path for saving the artifact, including the extension. For example: `.agents/skills/my-workflow.md`, `my-workflow.codex.md`, or `my-workflow.ladder.ts`. See the [Suggested File Locations](#suggested-file-locations) table below for the full breakdown by target.
+</ResponseField>
+
+<ResponseField name="mimeType" type="string" required>
+  MIME type of the artifact content. One of:
+
+  | Value | Targets |
+  |---|---|
+  | `text/markdown` | `codex`, `claude`, `hermes` |
+  | `text/x-python` | `python` |
+  | `text/typescript` | `typescript` |
+</ResponseField>
+
+<ResponseField name="sourceHash" type="string" required>
+  SHA-256 of the normalized YAML, encoded as a hex string. The same YAML always produces the same hash, regardless of whitespace or comment differences. Use this to cache artifacts, detect stale builds, or embed a reproducibility fingerprint in your tooling.
+</ResponseField>
+
+<ResponseField name="compilerVersion" type="string" required>
+  The semantic version of the Rust `lgir-core` crate that produced this artifact, read from `CARGO_PKG_VERSION` at compile time. Log this alongside the artifact for reproducibility audits.
+</ResponseField>
+
+<ResponseField name="adapterVersion" type="string" required>
+  Version string for the target-specific adapter that rendered the artifact. Examples: `"codex-skill-v1"`, `"typescript-data-v1"`. Adapters are versioned independently of the core compiler.
+</ResponseField>
+
+<ResponseField name="capabilityReport" type="CapabilityReport" required>
+  Per-target classification of every workflow construct encountered during compilation. See the [CapabilityReport Fields](#capabilityreport-fields) section below.
+</ResponseField>
+
+<ResponseField name="diagnostics" type="Diagnostic[]" required>
+  Warnings and info diagnostics produced during compilation. Error diagnostics here mean `ok` is `false`. Refer to the [Diagnostic Fields](/lgir/analysis-result#diagnostic-fields) section of the AnalysisResult reference for the full shape of each diagnostic object.
+</ResponseField>
+
+---
+
+## CapabilityReport Fields
+
+<Expandable title="CapabilityReport">
+  <ResponseField name="target" type="Target" required>
+    The target this report describes. One of `"codex"`, `"claude"`, `"hermes"`, `"python"`, or `"typescript"`.
+  </ResponseField>
+
+  <ResponseField name="native" type="string[]" required>
+    Workflow constructs that the target fully supports at the mechanical level — for example, `"ordered instructions"`, `"Agent Skills frontmatter"`, or `"stable topological order"`. These constructs are expressed in the artifact in a way the target runtime can act on directly.
+  </ResponseField>
+
+  <ResponseField name="instructional" type="string[]" required>
+    Constructs that the artifact expresses as explicit written instructions rather than mechanically enforced behavior. For example, `"bounded loops"`, `"human approval gates"`, and `"typed data contracts"` are instructional for all Markdown targets — the compiler writes them clearly in the artifact, but the target runtime is responsible for following them. Ladder Graph never claims an instructional feature is mechanically enforced.
+  </ResponseField>
+
+  <ResponseField name="unsupported" type="string[]" required>
+    Constructs the target cannot represent in any form. Entries here correspond to error diagnostics that blocked or would block compilation. An empty array means the target supports or can instruct every construct in the workflow.
+  </ResponseField>
+</Expandable>
+
+---
+
+## TypeScript Type
+
+```typescript
+export interface CompileResult {
+  ok: boolean;
+  content: string;
+  suggestedFilename: string;
+  mimeType: string;
+  sourceHash: string;
+  compilerVersion: string;
+  adapterVersion: string;
+  capabilityReport: CapabilityReport;
+  diagnostics: Diagnostic[];
+}
+
+export interface CapabilityReport {
+  target: Target;
+  native: string[];
+  instructional: string[];
+  unsupported: string[];
+}
+```
+
+---
+
+## Usage Example
+
+Compile to the `"codex"` target and write the artifact to its suggested location:
+
+```typescript
+import { compiler } from "./src/compiler/client";
+import { promises as fs } from "fs";
+
+const result = await compiler.compile(yaml, "codex");
+
+if (result.ok) {
+  // Write to the suggested path, e.g., .agents/skills/my-workflow.md
+  await fs.writeFile(result.suggestedFilename, result.content, "utf-8");
+  console.log(`Compiled ${result.sourceHash} → ${result.suggestedFilename}`);
+  console.log(`Compiler: ${result.compilerVersion}, Adapter: ${result.adapterVersion}`);
+
+  // Log any instructional constructs so callers know what requires runtime cooperation.
+  if (result.capabilityReport.instructional.length > 0) {
+    console.log("Instructional constructs:", result.capabilityReport.instructional.join(", "));
+  }
+} else {
+  console.error("Compilation blocked by error diagnostics:");
+  for (const d of result.diagnostics) {
+    if (d.severity === "error") {
+      console.error(`  [${d.code}] ${d.message}`);
+    }
+  }
+}
+```
+
+---
+
+## Suggested File Locations
+
+The compiler sets `suggestedFilename` based on the workflow name and target. The table below shows the pattern for each target:
+
+| Target | Suggested path | Notes |
+|---|---|---|
+| `codex` | `.agents/skills/<workflow-name>.codex.md` | Compatible with Agent Skills; reference the file from `AGENTS.md` |
+| `claude` | `.claude/skills/<workflow-name>.claude.md` | Claude Code skill; equivalent Agent Skills-style frontmatter |
+| `hermes` | `~/.hermes/skills/ladder-graph/<workflow-name>/SKILL.md` | Save per-workflow; confirm toolsets and MCP servers separately in `~/.hermes/config.yaml` |
+| `python` | `<workflow-name>.ladder.py` | Importable data module; no runtime dependencies |
+| `typescript` | `<workflow-name>.ladder.ts` | Typed data module with `readyNodes` and `capabilityContract` helpers |
+
+<Note>
+  Compilation is blocked by any error-severity diagnostic — always check `result.ok` before reading `result.content`. If `ok` is `false`, `content` is an empty string and `diagnostics` will tell you what needs to be fixed. Run [`compiler.analyze(yaml, target)`](/lgir/compiler-api#analyze-yaml-target) first to surface and resolve all errors before calling `compile`.
+</Note>
+
+<Warning>
+  The Markdown targets (`codex`, `claude`, `hermes`) are instruction-only artifacts. They document required skills, connectors, and permissions — but Ladder Graph does not install capabilities, modify host configuration files, store provider credentials, or guarantee that a runtime will enforce any particular behavior. Review `capabilityReport.instructional` to understand which constructs depend on runtime cooperation.
+</Warning>

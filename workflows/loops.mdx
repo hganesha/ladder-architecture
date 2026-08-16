@@ -1,0 +1,142 @@
+---
+title: "Structured Bounded Loops in Ladder Graph Workflows"
+sidebarTitle: "Loops"
+description: "Add safe, bounded iteration to your workflows using the loop node kind. Configure body nodes, an exit condition, maxIterations, and an exhaustion policy."
+---
+
+Unbounded loops are one of the most common safety issues in agent workflows. A loop that has no exit condition, or that relies on an agent voluntarily stopping, can run indefinitely — consuming resources, repeating mistakes, and making the overall workflow unpredictable. Ladder Graph enforces bounded loops at the compiler level: every `loop` node must declare a maximum iteration count between 1 and 100, a testable exit condition, and an explicit policy for what happens when the bound is exhausted. The compiler rejects any loop that omits these fields before generating an artifact.
+
+## Loop Node Fields
+
+| Field | Type | Description |
+|---|---|---|
+| `body` | `string[]` | Ordered list of node IDs that execute in each iteration. Must reference at least one existing node. |
+| `exitCondition` | `string` | Expression evaluated after each iteration (e.g., `critique.passed == true`). The loop stops early when this evaluates to true. |
+| `maxIterations` | `integer` | Maximum number of iterations, from 1 to 100 (required). The compiler rejects 0 and any value above 100 with diagnostic LG120 and offers a one-click repair to set a safe default of 3. |
+| `onExhausted` | `string` | Policy when the iteration cap is reached without the exit condition passing: `stop` halts the loop and reports it, `continue` passes the last result downstream, `warn` continues and attaches a diagnostic. |
+
+## Creating a Loop
+
+<Steps>
+  <Step title="Add a loop node to the canvas">
+    Open the palette, find **Control → Loop**, and drag it onto the canvas. The node appears with a pink outline and default config: `body: []`, `exitCondition: evaluation.passed == true`, `maxIterations: 3`, `onExhausted: stop`.
+  </Step>
+  <Step title="Open the inspector → Loop Config">
+    Click the loop node to select it, then open the inspector panel on the right. Navigate to the **Loop Config** section.
+  </Step>
+  <Step title="Add existing nodes to the body list">
+    The nodes you want to repeat must already be on the canvas. In the **body** field, add each node ID in the order they should execute within a single iteration. The compiler validates that every body ID references a real node (LG123).
+  </Step>
+  <Step title="Set exitCondition referencing a body node's output">
+    Write an expression that references a field from one of the body nodes' outputs. For example, if your body includes an `evaluate` node with ID `critique`, you might write `critique.passed == true`. The loop exits early as soon as this expression is true.
+  </Step>
+  <Step title="Set maxIterations">
+    Enter an integer between 1 and 100. For most revision workflows, 3–5 iterations is a practical balance between thoroughness and safety. The compiler offers a one-click repair to set `3` when the value is missing or out of range.
+  </Step>
+  <Step title="Choose an onExhausted policy">
+    Select `stop` to halt the workflow and report that the loop exhausted its budget, `continue` to pass the last iteration's result downstream without a warning, or `warn` to pass the result and attach an informational diagnostic.
+  </Step>
+</Steps>
+
+## YAML Example
+
+The following example shows a complete `loop` node from the draft-critique-revise workflow template:
+
+```yaml
+apiVersion: ladder.dev/v1alpha1
+kind: Workflow
+metadata:
+  name: draft-critique-revise
+  title: Draft, Critique, and Revise
+spec:
+  objective: Produce a reviewed and improved deliverable.
+  nodes:
+    - id: input
+      kind: input
+      name: Request
+
+    - id: drafter
+      kind: agent
+      name: Drafter
+      role: Technical Writer
+      prompt: >
+        Draft a response to the input request. Return your deliverable
+        as a Markdown document with a clear structure.
+      outputSchema:
+        type: object
+        required: [deliverable]
+        properties:
+          deliverable:
+            type: string
+
+    - id: critique
+      kind: evaluate
+      name: Critic
+      role: Independent evaluator
+      prompt: >
+        Evaluate the draft against the original request. Return a score
+        between 0 and 1, a boolean `passed` field (true when score >= 0.8),
+        and an array of specific `reasons` for any shortfalls.
+
+    - id: revision-loop
+      kind: loop
+      name: Revision loop
+      config:
+        body: [drafter, critique]
+        exitCondition: "critique.passed == true"
+        maxIterations: 3
+        onExhausted: stop
+
+    - id: output
+      kind: output
+      name: Final deliverable
+
+  edges:
+    - id: e1
+      from: input
+      to: drafter
+      kind: dependency
+    - id: e2
+      from: drafter
+      to: critique
+      kind: data
+      contract: "{ type: object, required: [deliverable] }"
+    - id: e3
+      from: critique
+      to: revision-loop
+      kind: dependency
+    - id: e4
+      from: revision-loop
+      to: output
+      kind: data
+      contract: "{ type: object, required: [deliverable] }"
+```
+
+## Validation
+
+The compiler enforces all of the following rules before a loop node can compile:
+
+| Rule | Diagnostic | Severity |
+|---|---|---|
+| `maxIterations` must be between 1 and 100 | LG120 (with safe repair) | error |
+| `exitCondition` must be a non-empty expression | LG121 | error |
+| `body` must contain at least one node ID | LG122 | error |
+| Every body node ID must reference an existing node | LG123 | error |
+| No back-edges or self-edges within the loop | LG144 / LG150 | error |
+
+When LG120 fires, the compiler automatically suggests a repair: click **"Set a safe three-iteration bound"** in the diagnostics panel to apply `maxIterations: 3` in one step.
+
+## Target Rendering
+
+Loops are rendered as explicit bounded instructions in all compiled targets:
+
+- **Markdown targets** (Codex, Claude, Hermes Agent): the generated document includes a clearly numbered loop instruction listing the body nodes, exit condition, iteration cap, and exhaustion policy. The capability is reported as `instructional` — the model follows the bound as a directive, not a hard runtime guarantee.
+- **Python / TypeScript modules**: the compiled `.ladder.py` and `.ladder.ts` files include the full loop config in the workflow data object and expose it through the `DEPENDENCIES` map. Your host application is responsible for implementing the iteration logic using the declared fields.
+
+<Warning>
+  **Back-edges and self-edges are invalid inside a loop.** Adding a graph edge that routes from a body node back to the loop node itself — or from any node to itself — creates a cycle that the compiler rejects with LG150. Use the `body` list to specify the iteration sequence; do not try to wire iteration by hand with edges.
+</Warning>
+
+<Tip>
+  The built-in **Draft → Critique → Revise** template on the welcome screen is pre-configured with a three-iteration bounded loop, an `evaluate` node wired as the exit condition source, and sensible default prompts. Open it, adjust the role and prompt for your use case, and you are ready to compile.
+</Tip>

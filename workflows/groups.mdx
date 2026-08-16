@@ -1,0 +1,103 @@
+---
+title: "Execution Groups: Sequential and Parallel Phases"
+sidebarTitle: "Groups"
+description: "Use execution groups to bound a set of nodes into a sequential or parallel phase with a single input, a single output, and an aggregate or serialize exit strategy."
+---
+
+An execution group is a visible bounding container that wraps a set of nodes into a single logical phase. A group has one external input and one external output, runs its member nodes in either sequential or parallel mode, and collects every member's result before releasing any output to the downstream workflow. Groups give you a clean way to express a parallel fan-out and fan-in — or a self-contained sequential pipeline — without scattering individual edges across the canvas. The compiler validates group membership, prevents boundary-crossing edges, and ensures every member's output is accounted for before the group completes.
+
+## Group Node Fields
+
+| Field | Type | Description |
+|---|---|---|
+| `members` | `string[]` | Ordered list of node IDs that belong to this group. IDs must be unique, must reference existing nodes, and cannot include another group (LG132). |
+| `execution` | `string` | `sequential` — members run one at a time in the declared order. `parallel` — members run concurrently. |
+| `exit` | `string` | `aggregate` — collect all member results into one merged object. `serialize` — produce results as an ordered array, one entry per member. |
+
+## Creating a Group
+
+<Steps>
+  <Step title="Add a group node to the canvas">
+    Open the palette, find **Flow → Group**, and drag it onto the canvas. It renders as a large bounding card with a blue outline. By default it has `execution: parallel` and `exit: aggregate`.
+  </Step>
+  <Step title="Move member nodes inside the group boundary">
+    Drag any existing agent, tool, transform, or other non-group nodes into the group's visual boundary on the canvas. The inspector updates the `members` list automatically as you move nodes in and out of the group.
+  </Step>
+  <Step title="Open the inspector → Group Config">
+    Click the group node to select it, then open the inspector panel. Navigate to the **Group Config** section to view and edit `members`, `execution`, and `exit`.
+  </Step>
+  <Step title="Set execution mode and exit strategy">
+    Choose `sequential` if members must run in order and each one depends on the previous member's output. Choose `parallel` if members can run independently. Then choose `aggregate` to merge all results into one object, or `serialize` to produce an ordered list.
+  </Step>
+  <Step title="Wire the external edges">
+    Connect the upstream node's edge to the group node (not directly to a member). Connect the group node's output edge to the next downstream node. External inputs must enter through the group node and outputs must leave through its collector — direct edges that cross a member boundary produce routing diagnostics (LG145, LG146).
+  </Step>
+</Steps>
+
+## YAML Example
+
+```yaml
+- id: review-phase
+  kind: group
+  name: Parallel review phase
+  summary: >
+    Route the draft through two independent reviewers in parallel,
+    then aggregate their feedback into one object.
+  config:
+    members: [technical-reviewer, editorial-reviewer]
+    execution: parallel
+    exit: aggregate
+```
+
+The two member nodes are defined separately in `spec.nodes`:
+
+```yaml
+- id: technical-reviewer
+  kind: agent
+  name: Technical Reviewer
+  role: Senior engineer
+  prompt: >
+    Review the draft for technical accuracy. Return a list of findings
+    and an overall recommendation.
+
+- id: editorial-reviewer
+  kind: agent
+  name: Editorial Reviewer
+  role: Editor
+  prompt: >
+    Review the draft for clarity, tone, and structure. Return a list
+    of suggestions and an overall recommendation.
+```
+
+And the group is connected in `spec.edges`:
+
+```yaml
+edges:
+  - id: e1
+    from: drafter
+    to: review-phase
+    kind: data
+    contract: "{ type: object, required: [deliverable] }"
+  - id: e2
+    from: review-phase
+    to: synthesizer
+    kind: data
+    contract: "{ type: object }"
+```
+
+## Edge Rules
+
+The compiler enforces strict boundary rules for groups:
+
+- **External inputs must enter through the group node.** A direct edge from an external node to a member node bypasses the group's input gate and triggers LG146.
+- **Outputs must leave through the group's collector.** A direct edge from a member node to an external node bypasses the group's exit strategy and triggers LG145.
+- **A node can belong to at most one group.** Assigning the same member ID to two different groups triggers LG133.
+- **Groups cannot contain themselves or another group.** Nesting groups is not supported (LG132).
+
+<Note>
+  Groups are a design-time bounding container. They organize nodes visually and define ordering and exit strategy, but they do not introduce a new runtime primitive. The compiler expands group membership into the topological sort, applies the declared execution order for sequential groups, and treats members as independent for parallel groups.
+</Note>
+
+## Visual Macro
+
+The **Parallel** visual macro automatically creates a group node with `execution: parallel`, two default agent nodes as members, and a join node downstream. Drag it from **Macros → Parallel** in the palette to scaffold this topology in one step, then rename and configure the generated nodes. See [Visual Macros](/workflows/visual-macros) for all available macros.

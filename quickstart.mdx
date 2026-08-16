@@ -1,47 +1,229 @@
 ---
-title: "Quickstart"
-description: "Begin with a guide on the fastest path to a successful outcome"
+title: "Get Started with Ladder Graph in 10 Minutes"
+sidebarTitle: "Quick Start"
+description: "Learn how to open a workflow template, customize nodes, validate the graph, and compile a self-contained artifact for your agent harness in under ten minutes."
 ---
 
-Describe how someone begins using your product. What is the first thing they need to do? Are there any prerequisites?
-
-A quickstart should take someone from zero to using your product. They'll get a quick win and a sense of what they can accomplish.
-
-## Prerequisites
-
-Before you begin, you must have:
-
-- Requirement one (for example, Node.js 18+, a free account, an API key)
-- Requirement two (for example, a compatible device, a compatible browser, a compatible operating system)
-
-## Get started
+This guide walks you through the complete primary journey in Ladder Graph: from opening the studio to holding a compiled, ready-to-use artifact. You will open a starter template, explore and customize nodes, check the synchronized LGIR YAML, run validation, and compile your first target. The whole journey takes under ten minutes.
 
 <Steps>
-  <Step title="Install">
-    Describe how to install your product or sign up.
+  <Step title="Open the Studio">
+    Navigate to the Ladder Graph PWA in any modern browser. No installation, account, or internet connection is required after the first load—the studio is a Progressive Web App that caches its shell, fonts, schema, Web Worker, and WebAssembly module on first visit and works fully offline from that point on.
+
+    To run it locally instead:
 
     ```bash
-    npm install your-package
+    # Requirements: Node.js 20+, npm 10+
+    npm install
+    npm run dev
     ```
+
+    Then open `http://127.0.0.1:5173`. Your projects are stored in your browser's IndexedDB and OPFS storage—nothing leaves your machine.
   </Step>
-  <Step title="Configure">
-    Describe any setup or configuration needed before first use.
 
-    ```bash
-    your-cli init
-    ```
+  <Step title="Choose a Template">
+    The welcome screen presents **16 outcome-led starter templates** grouped by area. Browse the library or use the search to filter by keyword. Each card shows the workflow title, topology shape, and a short description of its outcome.
+
+    The library covers these areas and shapes:
+
+    | Area | Example Templates |
+    |---|---|
+    | **Core patterns** | Draft → critique → revise (chain + structured loop) |
+    | **Software engineering** | Implementation + risk review (diamond + join); Secure software delivery; Full-stack app → production |
+    | **Research** | Evidence research → synthesis → evaluation (fan-out + gate); Literature review + gap analysis |
+    | **Security** | Threat model + mitigation review; Security incident response |
+    | **Product management** | Opportunity framing + decision; Feature spec + feasibility review |
+    | **Product design** | UX audit + redesign brief; Design critique + validation plan |
+    | **Go-to-market** | Positioning + launch experiment |
+    | **Multimodal** | Multimodal asset production (OpenRouter profiles) |
+    | **Architecture & design** | Coordinated building design |
+
+    Click any card to open that template on the canvas. If you want a blank starting point, choose **New workflow** from the project menu.
+
+    <Tip>
+      Start with **Draft → critique → revise** if you want to see the three core node kinds (agent, evaluate, loop) in the simplest possible shape before exploring larger templates.
+    </Tip>
   </Step>
-  <Step title="Run it">
-    Show the first thing a user does to see it working.
 
-    ```bash
-    your-cli start
+  <Step title="Explore the Canvas">
+    Once you open a template, the graph appears on a dark grid canvas. Take a moment to orient yourself with the studio's four main regions:
+
+    - **Canvas** — the central grid where nodes and edges live. Pan with middle-click or trackpad scroll; zoom with pinch or the scroll wheel. The canvas focuses on the meaningful phase of large workflows rather than shrinking everything to a thumbnail.
+    - **Minimap** — the small overview in the corner lets you navigate large graphs quickly. Click or drag to jump to any part of the workflow.
+    - **Palette** — the searchable sidebar lists all 11 node kinds grouped by category. Drag any kind onto the canvas, or click it to insert at a default position.
+    - **Inspector** — clicking a node opens the inspector panel on the right. This is where you edit everything about a node.
+    - **Compiler drawer** — the panel at the bottom of the screen contains the target selector, the Validate button, the Compile button, and the diagnostics list.
+
+    Use the toolbar to toggle between **Canvas**, **Split**, and **YAML** views.
+  </Step>
+
+  <Step title="Inspect a Node">
+    Click any node on the canvas to open it in the inspector. Every node shares these core fields:
+
+    | Field | What it controls |
+    |---|---|
+    | **Name** | The node's display label and its identifier in the compiled artifact |
+    | **Role** | The specialist identity assigned to an agent or evaluator (e.g., "Adversarial evaluator") |
+    | **Prompt** | The instruction this node carries into the compiled artifact |
+    | **Skills** | Declared skill identifiers the node requires (e.g., `evaluation`, `implementation`) |
+    | **Connectors** | Integration identifiers such as MCP servers or API profiles |
+    | **Output schema** | A JSON Schema describing the structured output contract this node promises |
+
+    Additional fields appear for specific node kinds: a `condition` node shows branch expressions; a `loop` node shows `maxIterations` and an exhaustion policy; a `group` node shows execution mode (sequential or parallel) and exit behavior.
+
+    Edit any field and watch the canvas label and the YAML view update in real time.
+
+    <Tip>
+      The inspector also shows the **target capability** for each skill and connector—whether the selected target supports it natively, treats it as instructional, or reports it as unsupported. This helps you spot mismatches before you compile.
+    </Tip>
+  </Step>
+
+  <Step title="Check the YAML">
+    Every action you take on the canvas—adding a node, drawing an edge, editing a field in the inspector—patches the underlying **LGIR YAML** document directly. Switch to YAML mode (or use the Split view to see both at once) to inspect the canonical representation of your workflow.
+
+    A valid LGIR document always starts with:
+
+    ```yaml
+    apiVersion: ladder.dev/v1alpha1
+    kind: Workflow
+    metadata:
+      name: draft-critique-revise
+      title: "Draft, critique, revise"
+    spec:
+      objective: "Produce a high-quality deliverable that passes an explicit evaluation contract."
+      nodes:
+        - id: draft
+          kind: agent
+          name: Create draft
+          role: Senior implementer
+          prompt: "Create a complete draft from the brief..."
+      edges:
+        - id: e-request-draft
+          from: request
+          to: draft
+          kind: data
+          contract: Brief
     ```
+
+    You can also edit the YAML directly. When your YAML is syntactically valid the canvas stays live; if you introduce a syntax error, the canvas becomes read-only and Ladder Graph preserves the last valid YAML so your work is recoverable.
+
+    <Note>
+      LGIR YAML is the canonical source of truth. Compiled artifacts are fully reproducible from the YAML alone—no hidden studio state is required.
+    </Note>
+  </Step>
+
+  <Step title="Run Validation">
+    Open the **compiler drawer** at the bottom of the studio and click **Validate**.
+
+    The Rust/WASM engine runs the full validation pipeline:
+
+    1. Security limits and YAML parse
+    2. Typed LGIR document construction
+    3. ID, contract, and control-flow validation
+    4. Topological ordering
+    5. Source hash and capability analysis
+
+    Diagnostics appear in the drawer, each with a stable code, severity, source path (e.g., `spec.nodes[2].config.maxIterations`), and a human-readable message. Where a safe repair exists, the diagnostic includes a **Fix** button that patches the YAML for you.
+
+    | Severity | Effect |
+    |---|---|
+    | **Error** | Blocks compilation. You must resolve all errors before you can compile. |
+    | **Warning** | Does not block compilation. The artifact will include a note about the condition. |
+    | **Info** | Informational only. No action required. |
+
+    Common errors to watch for: unbounded loops (set a `maxIterations` between 1 and 100), duplicate node IDs, edges with missing endpoints, and unsupported node kinds.
+  </Step>
+
+  <Step title="Select a Target">
+    In the compiler drawer, choose your compilation target from the dropdown:
+
+    | Target | Best for |
+    |---|---|
+    | `codex` | Coding agents that read `AGENTS.md` or Agent Skills files |
+    | `claude` | Claude projects and Claude Code `SKILL.md` files |
+    | `hermes` | Hermes Agent skill files with `metadata.hermes` fields |
+    | `python` | Host applications written in Python that bind and run nodes |
+    | `typescript` | Host applications written in TypeScript that bind and run nodes |
+
+    When you change the target, the inspector's capability catalog updates to show recommendations and highlight any skills or connectors that are unsupported on that target.
+  </Step>
+
+  <Step title="Compile and Copy">
+    Click **Compile**. The engine runs the full pipeline—including any remaining validation—and produces one self-contained artifact. The result appears in the compiler drawer with:
+
+    - The suggested filename (e.g., `AGENTS.md` or `draft-critique-revise.ladder.ts`)
+    - The source hash for this exact YAML snapshot
+    - The compiler version and adapter version
+    - A capability report listing `native`, `instructional`, and `unsupported` features
+
+    Click **Copy to clipboard** to paste the artifact directly into your project, or click **Download** to save the file. If your workflow has no errors the compile button is always available; recompile any time you change the workflow.
   </Step>
 </Steps>
 
-<Tip>
-  Give people a way to get help. This could be a link to a support page, a chat with a customer support agent, or a forum for your product.
+## What's in the Artifact
 
-  Example: Need help? Reach out to us at [support@yourcompany.com](mailto:support@yourcompany.com).
-</Tip>
+The artifact's contents depend on the target you selected.
+
+**Markdown targets — `codex`, `claude`, `hermes`**
+
+Each Markdown artifact is a single, self-contained skill file with:
+
+- **Frontmatter** declaring the target, workflow name, documentation date, and compiler version
+- **Objective** — the workflow's stated outcome
+- **Node instructions** in stable topological order, each with its role, prompt, required skills, and connectors
+- **Required skills and connectors** — a manifest of every capability the workflow declares, so the harness operator knows exactly what to provision
+- **Loop and group instructions** rendered as explicit bounded steps with their iteration limits and exhaustion policies
+
+For Codex, save the file as `AGENTS.md` at your repository root or beneath `.agents/skills/`. For Claude, save it as `SKILL.md` beneath `.claude/skills/`. For Hermes, save it as `~/.hermes/skills/ladder-graph/<workflow>/SKILL.md`.
+
+**Code targets — `python`, `typescript`**
+
+Each code artifact is an importable module (`<workflow>.ladder.py` or `<workflow>.ladder.ts`) that contains:
+
+- **Normalized workflow data** — the full LGIR document in a typed data structure
+- **Stable node order** — a deterministic topological list of node IDs your runtime can iterate
+- **Dependency map** — explicit per-node dependency lists so your harness can determine what must complete before each node can start
+- **Capability manifest** — a per-node record of every skill, tool, connector, and permission declaration
+- **`ready_nodes` / `readyNodes` helper** — a pure function that takes a set of completed node IDs and returns the list of nodes currently eligible to run
+
+These modules never import providers, call connectors, evaluate expressions, or execute nodes. Your host application supplies and authorizes the handlers.
+
+<CodeGroup>
+```python Python usage example
+from my_workflow import WORKFLOW, ready_nodes
+
+completed = set()
+while True:
+    runnable = ready_nodes(WORKFLOW, completed)
+    if not runnable:
+        break
+    for node in runnable:
+        # bind your own handler and execute
+        result = my_harness.run(node)
+        completed.add(node["id"])
+```
+
+```typescript TypeScript usage example
+import { WORKFLOW, readyNodes } from "./my-workflow.ladder";
+
+const completed = new Set<string>();
+while (true) {
+  const runnable = readyNodes(WORKFLOW, completed);
+  if (runnable.length === 0) break;
+  for (const node of runnable) {
+    // bind your own handler and execute
+    const result = await myHarness.run(node);
+    completed.add(node.id);
+  }
+}
+```
+</CodeGroup>
+
+<CardGroup cols={2}>
+  <Card title="Studio Guide" icon="display" href="/studio">
+    Learn the canvas, inspector, YAML editor, palette, and compiler drawer in depth.
+  </Card>
+  <Card title="LGIR Reference" icon="file-code" href="/lgir/overview">
+    Explore the full LGIR YAML schema: node kinds, edge kinds, policies, loops, groups, and subgraphs.
+  </Card>
+</CardGroup>

@@ -1,0 +1,172 @@
+---
+title: "LGIR Edge Schema: Data, Dependency, and Control Edges"
+sidebarTitle: "Edges"
+description: "Complete field reference for LGIR edges. Covers data, dependency, and control edge kinds with their fields, validation rules, and YAML examples."
+---
+
+Edges define the relationships between nodes in an LGIR workflow. Every edge connects a source node (`from`) to a target node (`to`) and declares one of three kinds: `data` for typed payload delivery, `dependency` for ordering constraints without data, and `control` for conditional routing from a `condition` or `evaluate` node. The compiler validates every edge in `spec.edges` before producing any output, so an invalid edge always produces an actionable diagnostic rather than silently broken behavior.
+
+## Edge Fields
+
+<ParamField path="id" type="string" required>
+  A unique identifier for the edge within the workflow. Duplicate IDs produce a `LG140` error. Used in diagnostics to identify which edge has a problem.
+</ParamField>
+
+<ParamField path="from" type="string" required>
+  The ID of the source node. Must reference an existing node in `spec.nodes`. An unknown ID produces a `LG141` error.
+</ParamField>
+
+<ParamField path="to" type="string" required>
+  The ID of the target node. Must reference an existing node in `spec.nodes`. An unknown ID produces a `LG142` error.
+</ParamField>
+
+<ParamField path="kind" type="EdgeKind" required>
+  The edge type. Must be `data`, `dependency`, or `control`. An unknown value produces a `LG143` error. When `kind` is omitted, the compiler defaults to `dependency`.
+</ParamField>
+
+<ParamField path="contract" type="string">
+  A schema reference or plain-text description of the data payload carried by this edge. Only meaningful for `data` edges. The compiler embeds this value in compiled Markdown as part of the dependency description for the target node (e.g. `"edge carrying '{contract}'"` ).
+</ParamField>
+
+<ParamField path="condition" type="string">
+  The branch label this edge fires on. Only meaningful for `control` edges. The value must match a `label` declared in the source node's `config.branches`. If a `control` edge does not carry a matching branch label, the router has no basis to select it.
+</ParamField>
+
+## Edge Kind Descriptions
+
+### data
+
+A `data` edge carries a typed payload from the source node to the target node. Use it when the target node consumes the output of the source node directly. Declaring a `data` edge also creates an implicit ordering dependency — the target node will not be scheduled until the source has completed.
+
+```yaml
+- id: writer-to-critic
+  from: writer
+  to: critic
+  kind: data
+  contract: "{ draft: string; wordCount: number }"
+```
+
+The `contract` field is a human-readable or JSON Schema string that documents what the payload looks like. It is embedded in compiled Markdown under the target node's **Depends on** section so that instruction-following agents know what to expect.
+
+### dependency
+
+A `dependency` edge establishes an ordering constraint without transferring data. Use it when node B must wait for node A to finish but does not consume A's output — for example, when an approval gate must complete before a subsequent agent begins, even though the agent does not read the approval result.
+
+```yaml
+- id: approval-to-publisher
+  from: approval
+  to: publisher
+  kind: dependency
+```
+
+Dependency edges produce the same topological ordering effect as data edges and contribute to the parallelism analysis in `Stats.maxParallelism`.
+
+### control
+
+A `control` edge fires when a `condition` or `evaluate` node selects a specific branch. The `condition` field on the edge must match the `label` of a branch declared in the source node's `config.branches`. The compiler routes execution along exactly one control edge per branching node.
+
+```yaml
+# On the condition node:
+- id: quality-check
+  kind: condition
+  name: Quality Gate
+  config:
+    expression: "score >= 0.8"
+    branches:
+      - label: pass
+        when: "score >= 0.8"
+      - label: fail
+        when: "score < 0.8"
+
+# Control edges referencing the branch labels:
+- id: quality-pass
+  from: quality-check
+  to: publish
+  kind: control
+  condition: pass
+
+- id: quality-fail
+  from: quality-check
+  to: revise
+  kind: control
+  condition: fail
+```
+
+<Note>
+  Every `control` edge must have a `condition` value that matches a declared branch label on the source node. If the label does not match any branch, the edge is structurally present but the router has no way to activate it. Always declare branches on the source node before adding control edges from it.
+</Note>
+
+## Validation Rules
+
+The compiler enforces the following rules on every edge. Violations produce the listed diagnostic codes.
+
+| Rule | Code | Severity |
+|---|---|---|
+| Both `from` and `to` must reference existing node IDs | `LG141`, `LG142` | error |
+| `kind` must be `data`, `dependency`, or `control` | `LG143` | error |
+| `from` and `to` must not be the same node | `LG144` | error |
+| Edge IDs must be unique within `spec.edges` | `LG140` | error |
+| The graph must not contain arbitrary cycles | `LG150` | error |
+| Member nodes must not have edges that cross group boundaries | `LG145`, `LG146` | warning |
+
+<Warning>
+  Self-edges (`from` and `to` pointing to the same node) are always rejected with `LG144`. To model repeated work, use a `loop` node with a `body` list and a bounded `maxIterations` value instead.
+</Warning>
+
+Arbitrary cycles — where following edges from any node eventually leads back to that same node — are rejected with `LG150`. The diagnostic message directs you to place repeated work inside a structured `loop` node, which makes the iteration bound explicit and preserves the graph's acyclic topology required for deterministic compilation.
+
+### Group Boundary Warnings
+
+When a node inside a group has an edge that connects it directly to a node outside the group (or vice versa), the compiler emits `LG145` or `LG146` warnings. These are warnings rather than errors because the graph is still valid, but they indicate a structural smell: groups are designed to have a single external input and a single external output. Routing data through the group node itself, rather than directly to or from its members, keeps your compiled artifact's dependency descriptions accurate.
+
+## Full YAML Example
+
+The following snippet shows all three edge kinds working together in a draft–critique–revise workflow.
+
+```yaml
+edges:
+  # Dependency: capture must complete before writer starts,
+  # but writer does not consume capture's raw output.
+  - id: e-capture-writer
+    from: capture
+    to: writer
+    kind: dependency
+
+  # Data: writer passes its draft directly to the critic.
+  - id: e-writer-critic
+    from: writer
+    to: critic
+    kind: data
+    contract: "{ draft: string; wordCount: number }"
+
+  # Data: critic passes its scored review back to the writer
+  # when the loop body repeats.
+  - id: e-critic-writer
+    from: critic
+    to: writer
+    kind: data
+    contract: "{ score: number; feedback: string[] }"
+
+  # Control: when the quality gate evaluates to "pass",
+  # execution continues to the approval node.
+  - id: e-gate-pass
+    from: quality-gate
+    to: approval
+    kind: control
+    condition: pass
+
+  # Control: when the quality gate evaluates to "fail",
+  # execution returns to the revision loop.
+  - id: e-gate-fail
+    from: quality-gate
+    to: revise-loop
+    kind: control
+    condition: fail
+
+  # Dependency: approval must complete before the output
+  # node runs, but output does not consume the approval result.
+  - id: e-approval-output
+    from: approval
+    to: result
+    kind: dependency
+```

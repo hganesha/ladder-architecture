@@ -1,0 +1,155 @@
+---
+title: "Compiled Artifacts: What Gets Generated and How to Use It"
+sidebarTitle: "Artifacts"
+description: "Each compilation produces one self-contained artifact — a Markdown skill file or a typed data module — with a stable source hash for reproducibility."
+---
+
+Every successful compilation produces exactly one artifact. That artifact is the complete, deployable output of the compiler — a self-contained file you can copy to your clipboard, download to your filesystem, and commit to version control. There are no intermediate files, no hidden state, and no network calls involved in producing it. The same YAML input always produces the same artifact, byte for byte.
+
+## Artifact Properties
+
+Every artifact carries the following properties regardless of target:
+
+| Property | Description |
+|----------|-------------|
+| `content` | The full text of the artifact — the Markdown skill file or the data module source. |
+| `suggestedFilename` | The recommended file path for this artifact, e.g. `.agents/skills/my-workflow.md` for Codex or `my-workflow.ladder.ts` for TypeScript. |
+| `mimeType` | `text/markdown` for Codex, Claude, and Hermes; `text/x-python` for Python; `text/typescript` for TypeScript. |
+| `sourceHash` | SHA-256 of the normalized YAML. Identical inputs always produce identical hashes. Use this to verify reproducibility or detect drift. |
+| `compilerVersion` | The version of the Ladder Graph Rust/WASM compiler core that produced this artifact. |
+| `adapterVersion` | The version of the target-specific adapter, e.g. `codex-skill-v1` or `typescript-data-v1`. |
+
+## Markdown Artifact Structure
+
+Artifacts compiled to **codex**, **claude**, or **hermes** are Markdown files structured as follows:
+
+**Frontmatter** — a YAML block that embeds target metadata and is compatible with the Agent Skills format used by each harness:
+
+```markdown
+---
+name: draft-critique-revise
+description: Produce a high-quality deliverable that passes an explicit evaluation contract.
+metadata:
+  ladder-target: codex
+  ladder-source-hash: abc123...
+  ladder-compiler: 0.1.0
+  target-docs-as-of: 2026-08-15
+---
+```
+
+For Hermes artifacts, the frontmatter also includes `version: 1.0.0` and a `metadata.hermes` block with `tags` and `category` fields required by the Hermes skill loader.
+
+**Body** — after the frontmatter, the artifact contains:
+
+- A header comment clarifying that the file is instruction-only
+- An **Objective** section with the workflow's stated outcome
+- **Operating rules** — six numbered rules covering dependency order, parallel delegation, loop bound enforcement, tool permission limits, failure policy, and skill resolution
+- A **Workflow** section with one subsection per node, in topological order. Each node section describes its kind, upstream dependencies, purpose, role, required skills, required connectors, required tools, permissions, task instructions, capability templates with custom instructions, and expected output contract if one is declared
+- A **Completion contract** section that instructs the agent to confirm every output dependency, report loop iteration counts, and separate verified results from assumptions
+
+## Python Module Structure
+
+Artifacts compiled to **python** are importable `.ladder.py` modules. Here is a simplified illustration of the generated structure:
+
+```python
+"""Deterministic Ladder Graph workflow data.
+
+Generated code performs no network, connector, agent, or model calls. Supply any
+runtime handlers explicitly in the host application after validating capability
+templates and permissions.
+"""
+
+from __future__ import annotations
+from typing import Any, Final, Iterable
+
+LADDER_GRAPH: Final[dict[str, Any]] = { ... }  # full manifest
+
+WORKFLOW: Final[dict[str, Any]] = LADDER_GRAPH["workflow"]
+NODE_ORDER: Final[tuple[str, ...]] = tuple(LADDER_GRAPH["nodeOrder"])
+DEPENDENCIES: Final[dict[str, list[str]]] = LADDER_GRAPH["dependencies"]
+CAPABILITY_TEMPLATES: Final[dict[str, dict[str, Any]]] = LADDER_GRAPH["capabilities"]
+
+
+def ready_nodes(completed: Iterable[str]) -> tuple[str, ...]:
+    """Return ready node IDs in the compiler's stable topological order."""
+    completed_ids = frozenset(completed)
+    return tuple(
+        node_id
+        for node_id in NODE_ORDER
+        if node_id not in completed_ids
+        and all(dep in completed_ids for dep in DEPENDENCIES[node_id])
+    )
+
+
+def capability_contract(node_id: str) -> dict[str, Any]:
+    """Return a node's declarative templates without invoking them."""
+    if node_id not in CAPABILITY_TEMPLATES:
+        raise KeyError(f"Unknown Ladder Graph node: {node_id}")
+    return CAPABILITY_TEMPLATES[node_id]
+```
+
+## TypeScript Module Structure
+
+Artifacts compiled to **typescript** are typed `.ladder.ts` modules with the same data structure and equivalent helpers. The module uses `as const` for safe type narrowing and exports named TypeScript types:
+
+```typescript
+// Generated by Ladder Graph — target: typescript
+// Source hash: abc123...
+export const WORKFLOW = {
+  name: "draft-critique-revise",
+  objective: "Produce a high-quality deliverable that passes an explicit evaluation contract.",
+} as const;
+
+export const NODE_ORDER = ["request", "draft", "critique", "revise"] as const;
+
+export const DEPENDENCIES: Record<string, string[]> = {
+  draft: ["request"],
+  critique: ["draft"],
+  revise: ["critique"],
+};
+
+export function readyNodes(completed: ReadonlySet<string>): readonly string[] {
+  return NODE_ORDER.filter(
+    (id) => !completed.has(id) && DEPENDENCIES[id]?.every((dep) => completed.has(dep))
+  );
+}
+```
+
+The full module also exports `LADDER_GRAPH` (the complete typed manifest), `CAPABILITY_TEMPLATES` (per-node skill and connector declarations), and a `capabilityContract(nodeId)` helper.
+
+## Downloading vs Copying
+
+The compiler drawer provides two ways to get the artifact:
+
+<Steps>
+  <Step title="Copy to clipboard">
+    Click **Copy** to copy the full artifact text to your clipboard. This is convenient when you want to paste the content directly into a file you already have open, or when your harness accepts skill content by paste rather than file path.
+  </Step>
+  <Step title="Download the file">
+    Click **Download** to save the artifact using the `suggestedFilename`. The file downloads with the correct name and extension so you can move it directly to the appropriate directory in your project.
+  </Step>
+</Steps>
+
+## Reproducibility
+
+Ladder Graph's compiler is deterministic. If you compile the same LGIR YAML twice — regardless of when you compile it, on which machine, or in which browser — the output is identical. This is guaranteed by the following properties:
+
+- The Rust WebAssembly core normalizes the workflow to a canonical form before hashing.
+- The `sourceHash` field is a SHA-256 of that normalized form. The same YAML always produces the same hash.
+- Topological ordering is stable — ties in the dependency graph are broken alphabetically by node ID, so the node order never varies.
+- The compiled artifacts are committed fixtures in the Ladder Graph test suite, verified on every release.
+
+Use `sourceHash` to confirm that a distributed artifact matches the YAML you have locally, or to detect whether a skill file has been edited after compilation.
+
+## What Artifacts Do NOT Include
+
+It is important to understand the boundaries of what a compiled artifact is and is not:
+
+- **No tool grants or permission elevation.** An artifact that declares `workspace-write` as a permission requirement does not grant that permission. Your harness must authorize it separately.
+- **No provider credentials.** Credentials must never appear in LGIR or in any compiled artifact. The compiler enforces this by design — there is no credential field anywhere in the LGIR schema.
+- **No executable code that runs agents.** Markdown artifacts are instruction files; Python and TypeScript modules are data declarations. Neither format invokes a model, executes a shell command, or contacts any external service.
+- **Never executed by Ladder Graph itself.** Ladder Graph compiles artifacts; it does not run them. The artifact is your responsibility to deploy and execute in your own environment.
+
+<Tip>
+Place Markdown artifacts in the directory your harness expects. For Codex, that is `.agents/skills/<name>.md` (or reference it from `AGENTS.md`). For Claude Code, use `.claude/skills/<name>.md`. For Hermes Agent, use `~/.hermes/skills/ladder-graph/<workflow>/SKILL.md`. The `suggestedFilename` in the artifact properties already encodes the correct path for each target.
+</Tip>

@@ -1,0 +1,136 @@
+---
+title: "Safe Declarative Transforms Between Nodes"
+sidebarTitle: "Transforms"
+description: "Use transform nodes to reshape, filter, or remap data between workflow steps using one of seven safe declarative operations — no custom code required."
+---
+
+Agent workflows frequently need to extract a specific field from a large result, rename keys before passing data to another node, or filter an array down to the items that meet a threshold. Without a dedicated mechanism, you might be tempted to add a small agent just to manipulate data — which wastes a prompt invocation and introduces a risk of hallucinated field names or unintended side effects. Transform nodes let you perform all of these operations declaratively, using a fixed set of safe expressions that the Rust compiler validates before any artifact is generated. No custom code, no library imports, no shell commands.
+
+## Available Operations
+
+| Operation | Description |
+|---|---|
+| `select` | Extract one or more fields from an object using a JSONPath-like expression. Returns the matched value or subset. |
+| `rename` | Rename fields in an object. The expression maps old keys to new keys. |
+| `merge` | Combine multiple input objects into one. Later keys overwrite earlier ones on collision. |
+| `filter` | Keep only the array items that match a predicate expression (e.g., `item.score >= 0.8`). |
+| `deduplicate` | Remove duplicate items from an array by a specified key field. |
+| `sort` | Order array items by a key field and direction (`ASC` or `DESC`). |
+| `slice` | Take a subset of an array by a start and end index range. |
+
+## Transform Node Config
+
+Every `transform` node uses exactly two config fields:
+
+| Field | Description |
+|---|---|
+| `operation` | The operation name — one of the seven values above. The compiler rejects any other value with LG115. |
+| `expression` | The operation-specific expression string. Its syntax depends on the chosen operation. |
+
+## YAML Examples
+
+### Select
+
+Extract a single result field from an agent's output before passing it downstream:
+
+```yaml
+- id: pick-fields
+  kind: transform
+  name: Pick result fields
+  config:
+    operation: select
+    expression: "$.result"
+```
+
+### Filter
+
+Keep only the items in an array whose score meets a threshold:
+
+```yaml
+- id: filter-passed
+  kind: transform
+  name: Filter passed items
+  config:
+    operation: filter
+    expression: "item.score >= 0.8"
+```
+
+### Sort
+
+Order items by a numeric score in descending order before passing them to a synthesis agent:
+
+```yaml
+- id: sort-by-score
+  kind: transform
+  name: Sort by score
+  config:
+    operation: sort
+    expression: "score DESC"
+```
+
+### Rename
+
+Rename fields to match the schema expected by a downstream node:
+
+```yaml
+- id: normalize-keys
+  kind: transform
+  name: Normalize field names
+  config:
+    operation: rename
+    expression: "{ draft: deliverable, feedback: reasons }"
+```
+
+### Deduplicate
+
+Remove repeated items from a research results list before synthesis:
+
+```yaml
+- id: dedup-sources
+  kind: transform
+  name: Deduplicate sources
+  config:
+    operation: deduplicate
+    expression: "url"
+```
+
+### Slice
+
+Take only the top 5 results from a sorted list:
+
+```yaml
+- id: top-five
+  kind: transform
+  name: Take top 5
+  config:
+    operation: slice
+    expression: "0:5"
+```
+
+### Merge
+
+Combine the outputs of two parallel agents into one object for a downstream synthesizer:
+
+```yaml
+- id: merge-reviews
+  kind: transform
+  name: Merge review outputs
+  config:
+    operation: merge
+    expression: ""
+```
+
+## Safety
+
+Transforms are strictly declarative and run entirely inside the Rust compiler's validation pass:
+
+- They **cannot import libraries**, reference external URLs, or call any function not defined by the operation set.
+- They **cannot execute shell commands** or produce network-observable side effects.
+- They **cannot access the filesystem** or any environment variable.
+- The compiler validates the `operation` field against the exact allowed set and rejects any unrecognized value with LG115 before compilation proceeds.
+
+The safety constraint is intentional: Ladder Graph generates artifacts for agent runtimes, and any transform that could execute arbitrary code would undermine the compiler's guarantee that its output is fully auditable and deterministic.
+
+<Tip>
+  Place a `transform` node with `operation: select` or `operation: rename` immediately before any `agent` node that requires a specific input shape. This keeps your agent prompts clean and avoids instructing an agent to perform what is really just a data-wiring task. It also makes the data contract explicit in the LGIR YAML, which the compiler can validate and include in generated documentation.
+</Tip>

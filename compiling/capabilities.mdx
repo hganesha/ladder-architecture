@@ -1,0 +1,128 @@
+---
+title: "Capability Catalog: Skills, Connectors, and Permissions"
+sidebarTitle: "Capabilities"
+description: "Assign skills, tools, connectors, and permissions to agent and tool nodes. The capability catalog adapts to your selected target and stores customizations in LGIR."
+---
+
+Capabilities are the declarations that communicate to your agent harness what a node needs in order to run. When you assign a skill to an agent node, you are not installing that skill — you are documenting a requirement so that the harness, the skill file, and the operator reading the compiled artifact all have a shared understanding of what must be available. Capability declarations travel with the artifact; every compiled Markdown file lists them explicitly, and every code module exposes them as inert data.
+
+## Four Capability Types
+
+Each `agent`, `evaluate`, and `tool` node can declare up to four capability sets:
+
+| Type | Purpose | Examples |
+|------|---------|---------|
+| `skills` | Named responsibilities the agent needs — drawn from the capability catalog for your selected target. | `implementation`, `evaluation`, `research`, `software-architecture` |
+| `tools` | Primitive tool identifiers the node requires. | `read`, `edit`, `search`, `execute` |
+| `connectors` | External service connections or OpenRouter profiles the node needs access to. | `mcp:github`, `mcp:postgres`, `api:openrouter/google/gemini-2.5-flash-image` |
+| `permissions` | Declared permission requirements that your harness should verify before running the node. | `workspace-write`, `read-only` |
+
+All four sets are stored in LGIR as part of the node definition. They are included verbatim in the compiled artifact.
+
+## Shared Skills
+
+The following skills are available across all five targets. They represent the core discipline catalog built into Ladder Graph:
+
+<CardGroup cols={2}>
+  <Card title="implementation" icon="code">Make scoped code changes and preserve existing behavior.</Card>
+  <Card title="test-design" icon="flask">Design focused unit, integration, and regression coverage.</Card>
+  <Card title="evaluation" icon="check-circle">Score work against explicit evidence and pass thresholds.</Card>
+  <Card title="research" icon="search">Gather primary evidence and separate facts from inference.</Card>
+  <Card title="product-management" icon="layout">Frame user value, scope, tradeoffs, and acceptance criteria.</Card>
+  <Card title="product-design" icon="pen-tool">Design journeys, hierarchy, states, and interaction behavior.</Card>
+  <Card title="accessibility" icon="eye">Check keyboard, screen-reader, contrast, and motion needs.</Card>
+  <Card title="software-architecture" icon="layers">Define boundaries, interfaces, data, and operational tradeoffs.</Card>
+  <Card title="data-modeling" icon="database">Design durable schemas, ownership, and migrations.</Card>
+  <Card title="application-security" icon="shield">Review trust boundaries, abuse paths, and mitigations.</Card>
+  <Card title="privacy-review" icon="lock">Assess sensitive data handling, retention, and exposure.</Card>
+  <Card title="release-engineering" icon="rocket">Plan deployment, rollback, and release evidence.</Card>
+  <Card title="observability" icon="activity">Define logs, metrics, traces, and health checks.</Card>
+  <Card title="documentation" icon="book">Create clear, maintainable developer and user guidance.</Card>
+</CardGroup>
+
+Each target also adds its own harness-specific skills. For example, `codex` adds `repository-navigation`; `claude` adds `codebase-analysis` and `subagent-delegation`; `hermes` adds `hermes-agent` and `hermes-agent-skill-authoring`; `python` adds `python-callable` and `python-validation`; `typescript` adds `typescript-handler` and `schema-validation`.
+
+## Target-Aware Catalog
+
+When you switch the compilation target using the target selector, the inspector updates the skill and connector suggestions it surfaces for every agent and tool node. The catalog is tuned to the conventions and available integrations of each harness.
+
+### Connectors by target
+
+**Codex, Claude, Python, and TypeScript** all draw from the shared MCP connector catalog, which includes:
+
+- Developer tools: `mcp:github`, `mcp:linear`, `mcp:notion`, `mcp:slack`, `mcp:postgres`, `mcp:figma`, `mcp:browser`, `mcp:sentry`
+- Security operations: `mcp:security-scanner`, `mcp:siem`, `mcp:edr`, `mcp:threat-intel`, `mcp:incident-management`, `mcp:cloud-security`, `mcp:iam`, `mcp:grc`
+- Architecture and design: `mcp:bim`, `mcp:gis`, `mcp:rendering`, `mcp:energy-modeling`, `mcp:cost-estimation`, `mcp:construction-management`
+- OpenRouter multimodal profiles (image, video, speech, music, transcription)
+
+**Hermes** additionally surfaces its own native toolsets:
+
+| Connector ID | Purpose |
+|-------------|---------|
+| `hermes:toolset:web` | `web_search` and `web_extract` tools for sourced web research |
+| `hermes:toolset:terminal` | Terminal and process tools; require approved backend and permissions |
+| `hermes:toolset:file` | Read, write, patch, and search tools within the configured workspace |
+| `hermes:toolset:browser` | Interactive browser navigation, inspection, and verification |
+| `hermes:toolset:vision` | Image analysis, commonly backed by an OpenRouter model |
+| `hermes:toolset:image_gen` | Image generation through the configured provider |
+| `hermes:toolset:skills` | Discover and progressively load installed Hermes Agent Skills |
+| `hermes:toolset:delegation` | Delegate bounded work to isolated Hermes subagents |
+| `hermes:toolset:memory` | Persistent memory and recall capabilities |
+| `hermes:toolset:cronjob` | Scheduled work, only when the workflow grants that authority |
+| `hermes:toolset:safe` | Read-oriented web, vision, and mixture-of-agents preset |
+| `provider:openrouter` | Use the user's configured OpenRouter provider |
+
+### OpenRouter multimodal connectors
+
+All targets expose 15 pre-built OpenRouter multimodal connectors:
+
+| Category | Connectors |
+|----------|-----------|
+| Image generation | `api:openrouter/google/gemini-3-pro-image`, `api:openrouter/google/gemini-2.5-flash-image`, `api:openrouter/openai/gpt-image-2`, `api:openrouter/black-forest-labs/flux.2-pro`, `api:openrouter/bytedance-seed/seedream-4.5`, `api:openrouter/x-ai/grok-imagine-image-quality` |
+| Video generation | `api:openrouter/google/veo-3.1`, `api:openrouter/google/veo-3.1-fast`, `api:openrouter/bytedance/seedance-2.5`, `api:openrouter/kwaivgi/kling-v3.0-std`, `api:openrouter/minimax/hailuo-3` |
+| Speech generation | `api:openrouter/openai/gpt-audio`, `api:openrouter/openai/gpt-audio-mini` |
+| Music generation | `api:openrouter/google/lyria-3-pro-preview` |
+| Audio transcription | `api:openrouter/openai/whisper-large-v3` |
+
+## Customizations
+
+Every skill or connector you assign to a node resolves to a `customizations` record stored in the LGIR YAML. Each customization has two fields:
+
+- **`template`**: the pre-built base contract this entry extends (e.g., `implementation-base`). If you choose a custom identifier not in the catalog, it starts from a safe generic skill or connector contract.
+- **`instructions`**: editable text you write to narrow the skill's scope for this specific node (e.g., *"Focus on the specified module only. Do not modify test files."*).
+
+You can edit customization instructions directly in the inspector. All customizations are persisted in LGIR, so compiled artifacts are fully reproducible and do not depend on hidden studio state.
+
+```yaml
+capabilities:
+  skills:
+    - implementation
+    - test-design
+  tools:
+    - read
+    - edit
+  connectors:
+    - openrouter-image-generation
+  permissions:
+    - workspace-write
+  customizations:
+    implementation:
+      template: implementation-base
+      instructions: "Focus on the specified module only. Do not modify test files."
+```
+
+## Capability Report
+
+After a successful compilation, the compiler emits a **capability report** alongside the artifact. It classifies every workflow construct the target encountered:
+
+| State | Meaning |
+|-------|---------|
+| `native` | The target handles this construct mechanically and without approximation. |
+| `instructional` | The target expresses this as explicit instructions — the harness is told what to do, but there is no runtime enforcement by the compiler. |
+| `unsupported` | The target cannot handle this construct. Always produces an error diagnostic. |
+
+For Markdown targets (codex, claude, hermes), constructs like `approval` gates, `loop` bounds, and declared connector availability are reported as `instructional` — the generated skill file tells the agent what to do, but it is not a machine-enforced contract. For code targets (python, typescript), the native capabilities are typed workflow data, stable topological order, dependency maps, and pure readiness helpers.
+
+<Note>
+Catalog entries are authoring suggestions, not an inventory of installed capabilities. Ladder Graph does not connect to your agent harness, inspect your configuration, install skills, grant permissions, import runtime packages, or invoke connectors. It produces a text artifact that documents what is needed — your harness and your operators are responsible for providing it.
+</Note>

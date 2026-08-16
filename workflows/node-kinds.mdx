@@ -1,0 +1,312 @@
+---
+title: "Node Kinds Reference for LGIR Workflows"
+sidebarTitle: "Node Kinds"
+description: "Reference for all 12 LGIR node kinds: input, output, agent, tool, transform, condition, evaluate, approval, join, loop, group, and subgraph."
+---
+
+A Ladder Graph workflow is a directed acyclic graph of typed nodes connected by edges. Every node has a `kind` that determines its role in the workflow, the fields it accepts, and how the Rust compiler validates and renders it. The twelve node kinds are organized into four categories: Flow, Work, Data, and Control. You pick a kind from the palette, configure it in the inspector, and the compiler validates the full graph before generating an artifact.
+
+## Flow Nodes
+
+Flow nodes define the boundaries and structural scaffolding of a workflow.
+
+### `input`
+
+<Properties>
+  <Property name="color" type="string">`#54d7cf` (teal)</Property>
+  <Property name="category" type="string">Flow</Property>
+</Properties>
+
+The `input` node is the entry point for a workflow. It captures the user's objective and any typed inputs without adding assumptions that change scope. Every workflow should have exactly one `input` node; the compiler emits a warning (LG130) when none is present.
+
+**Key fields:** `inputSchema` — a JSON Schema object describing the expected input payload.
+
+---
+
+### `output`
+
+<Properties>
+  <Property name="color" type="string">`#e8e0d0` (cream)</Property>
+  <Property name="category" type="string">Flow</Property>
+</Properties>
+
+The `output` node is the terminal node that returns the final deliverable, unresolved risks, and a concise account of validation performed. Every workflow requires at least one `output` node; the compiler raises an error (LG131) when none is present.
+
+**Key fields:** `outputSchema` — a JSON Schema object describing the shape of the final result.
+
+---
+
+### `group`
+
+<Properties>
+  <Property name="color" type="string">`#62b6e7` (blue)</Property>
+  <Property name="category" type="string">Flow</Property>
+</Properties>
+
+A `group` node is a visible bounding container that runs a set of member nodes as a single bounded phase with one external input and one external output. Groups support sequential and parallel execution modes and aggregate or serialize member outputs before releasing any group output.
+
+**Key config fields:**
+
+| Field | Description |
+|---|---|
+| `members` | Ordered list of node IDs that belong to this group. |
+| `execution` | `sequential` or `parallel` — how the members run. |
+| `exit` | `aggregate` or `serialize` — how member outputs are combined. |
+
+```yaml
+- id: parallel-phase
+  kind: group
+  name: Parallel review phase
+  config:
+    members: [reviewer-a, reviewer-b]
+    execution: parallel
+    exit: aggregate
+```
+
+See [Execution Groups](/workflows/groups) for a full walkthrough.
+
+---
+
+### `subgraph`
+
+<Properties>
+  <Property name="color" type="string">`#8391a6` (slate)</Property>
+  <Property name="category" type="string">Flow</Property>
+</Properties>
+
+A `subgraph` node represents a named, collapsible phase container. It groups a logical section of the workflow under a single label so you can fold it on the canvas when focusing on the higher-level structure.
+
+<Note>
+  A `subgraph` is a design-time phase boundary. The compiler treats it as a named boundary node and renders the instruction "Complete its referenced child work before continuing." It does not recursively inline a separate workflow file.
+</Note>
+
+---
+
+## Work Nodes
+
+Work nodes represent active operations performed by agents or declared tool requirements.
+
+### `agent`
+
+<Properties>
+  <Property name="color" type="string">`#e86b5d` (red)</Property>
+  <Property name="category" type="string">Work</Property>
+</Properties>
+
+An `agent` node represents one focused role with a single prompt. Each agent should have a narrow, verifiable responsibility. The compiler requires a non-empty `prompt` (LG112) and warns when `role` is missing (LG113).
+
+**Key fields:**
+
+| Field | Description |
+|---|---|
+| `role` | A short title for the agent's responsibility (e.g., "Technical Writer"). |
+| `prompt` | The task instructions given to the agent at runtime. |
+| `capabilities.skills` | Named skills the agent may invoke. |
+| `capabilities.tools` | Primitive tool identifiers. |
+| `capabilities.connectors` | Named connectors (e.g., `mcp:github`). |
+| `capabilities.permissions` | Declared permission requirements. |
+| `outputSchema` | JSON Schema describing the expected output contract. |
+
+```yaml
+- id: drafter
+  kind: agent
+  name: Technical Drafter
+  role: Technical Writer
+  prompt: >
+    Draft a detailed technical specification for the feature described in the
+    input. Return a Markdown document with sections for overview, requirements,
+    and open questions.
+  capabilities:
+    skills: [technical-writing]
+    tools: []
+    connectors: []
+    permissions: []
+  outputSchema:
+    type: object
+    required: [deliverable]
+    properties:
+      deliverable:
+        type: string
+```
+
+---
+
+### `tool`
+
+<Properties>
+  <Property name="color" type="string">`#de9f54` (amber)</Property>
+  <Property name="category" type="string">Work</Property>
+</Properties>
+
+A `tool` node is a declarative capability requirement. It documents which tools and connectors are needed at a particular point in the workflow without invoking them. The compiler warns (LG114) when a tool node declares no tool identifiers.
+
+**Key fields:** `capabilities.tools` and `capabilities.connectors` — the identifiers of required tools and connectors.
+
+<Note>
+  Ladder Graph is a compiler, not a runtime. A `tool` node documents what the executing environment must provide; it does not grant permissions, install packages, or invoke any external system.
+</Note>
+
+---
+
+## Data Nodes
+
+### `transform`
+
+<Properties>
+  <Property name="color" type="string">`#e8bd58` (yellow)</Property>
+  <Property name="category" type="string">Data</Property>
+</Properties>
+
+A `transform` node applies one of seven safe, declarative operations to reshape data between workflow steps. Transforms cannot import libraries, execute shell commands, or produce side effects. The compiler validates the operation name and rejects any unrecognized value (LG115).
+
+**Key config fields:**
+
+| Field | Description |
+|---|---|
+| `operation` | One of: `select`, `rename`, `merge`, `filter`, `deduplicate`, `sort`, `slice`. |
+| `expression` | The operation-specific expression, e.g., a JSONPath for `select` or a predicate for `filter`. |
+
+```yaml
+- id: pick-fields
+  kind: transform
+  name: Pick result fields
+  config:
+    operation: select
+    expression: "$.result"
+```
+
+See [Safe Declarative Transforms](/workflows/transforms) for all seven operations with examples.
+
+<Tip>
+  Visual macros that compose multiple node kinds automatically — such as the **Reduce** macro — insert a transform node pre-configured with a sensible default operation. See [Visual Macros](/workflows/visual-macros) for details.
+</Tip>
+
+---
+
+## Control Nodes
+
+Control nodes direct the flow of execution — branching, scoring, pausing, joining, iterating, or gating work.
+
+### `condition`
+
+<Properties>
+  <Property name="color" type="string">`#f0a05a` (orange)</Property>
+  <Property name="category" type="string">Control</Property>
+</Properties>
+
+A `condition` node evaluates a boolean expression and routes execution to exactly one of its declared branches via a control edge. Each branch has a `label` (e.g., `"Pass"`) and a `when` expression.
+
+**Key config fields:**
+
+| Field | Description |
+|---|---|
+| `expression` | The boolean expression to evaluate (e.g., `result.passed == true`). |
+| `branches` | List of `{ label, when }` objects; each `label` must match a downstream control edge `condition` field. |
+
+```yaml
+- id: quality-check
+  kind: condition
+  name: Quality check
+  config:
+    expression: "result.passed == true"
+    branches:
+      - label: Pass
+        when: "true"
+      - label: Revise
+        when: "false"
+```
+
+---
+
+### `evaluate`
+
+<Properties>
+  <Property name="color" type="string">`#a990f5` (purple)</Property>
+  <Property name="category" type="string">Control</Property>
+</Properties>
+
+An `evaluate` node scores or critiques a result. It behaves like an `agent` but carries a default output schema with `score`, `passed`, and `reasons` fields. The compiler requires a non-empty `prompt` (LG112).
+
+**Key fields:** `role`, `prompt`, `outputSchema` — same as `agent`. The default output schema is:
+
+```yaml
+outputSchema:
+  type: object
+  required: [score, passed, reasons]
+  properties:
+    score:
+      type: number
+    passed:
+      type: boolean
+    reasons:
+      type: array
+      items:
+        type: string
+```
+
+---
+
+### `approval`
+
+<Properties>
+  <Property name="color" type="string">`#f0cb76` (gold)</Property>
+  <Property name="category" type="string">Control</Property>
+</Properties>
+
+An `approval` node pauses execution and requests explicit user consent before the workflow continues. It states clearly what action will follow after approval. Approval nodes are rendered as explicit instructions in compiled artifacts; the compiler reports this as an `instructional` capability (LG200).
+
+---
+
+### `join`
+
+<Properties>
+  <Property name="color" type="string">`#3ecf8e` (green)</Property>
+  <Property name="category" type="string">Control</Property>
+</Properties>
+
+A `join` node waits for one or more parallel branches to complete, then merges their outputs according to a declared policy. The compiler requires a valid join policy (LG124).
+
+**Key config fields:**
+
+| Field | Values | Description |
+|---|---|---|
+| `join` | `all` | Wait for every upstream branch to complete. |
+| `join` | `allSettled` | Wait for every branch, including those that failed. |
+| `join` | `first` | Proceed as soon as the first branch completes. |
+
+---
+
+### `loop`
+
+<Properties>
+  <Property name="color" type="string">`#e879a9` (pink)</Property>
+  <Property name="category" type="string">Control</Property>
+</Properties>
+
+A `loop` node provides safe, bounded iteration over a list of body nodes. It requires `maxIterations` between 1 and 100 (LG120), a non-empty `exitCondition` (LG121), and at least one body node reference (LG122). Back-edges and self-edges are invalid inside a loop.
+
+**Key config fields:**
+
+| Field | Description |
+|---|---|
+| `body` | Ordered list of node IDs that run in each iteration. |
+| `exitCondition` | Expression evaluated after each iteration (e.g., `critique.passed == true`). |
+| `maxIterations` | Integer 1–100; the compiler rejects 0 and values above 100. |
+| `onExhausted` | Policy when the iteration cap is reached: `stop`, `continue`, or `warn`. |
+
+```yaml
+- id: revision-loop
+  kind: loop
+  name: Revision loop
+  config:
+    body: [drafter, critique]
+    exitCondition: "critique.passed == true"
+    maxIterations: 3
+    onExhausted: stop
+```
+
+See [Structured Bounded Loops](/workflows/loops) for a complete walkthrough.
+
+<Tip>
+  The **Verify** visual macro scaffolds a draft agent, evaluate node, and a bounded loop in one step. Open the palette, find **Macros → Verify**, and drag it onto the canvas. See [Visual Macros](/workflows/visual-macros) for details.
+</Tip>

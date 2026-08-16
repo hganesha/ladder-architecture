@@ -1,0 +1,58 @@
+---
+title: "Visual Macros for Common Workflow Topologies"
+sidebarTitle: "Visual Macros"
+description: "Insert Parallel, Pipeline, Reduce, and Verify macros to instantly scaffold multi-node topologies. Macros create canonical nodes and edges directly in LGIR."
+---
+
+Building a workflow from individual nodes is precise but can be slow when you know what topology you want. Visual macros are convenience shortcuts that insert a pre-configured group of canonical nodes and edges in one drag-and-drop action. A **Parallel** macro gives you a group with two agents and a join. A **Verify** macro gives you a draft agent, an evaluate node, and a bounded revision loop. You get a fully wired starting point that compiles immediately, and every generated node and edge is visible in the LGIR YAML — ready for you to rename, reconfigure, and extend.
+
+**The most important thing to understand about macros:** they are not a hidden runtime format or a special macro language. When you drop a macro onto the canvas, it expands into ordinary canonical nodes and edges exactly as if you had added them by hand. The resulting YAML is fully portable, passes through the same Rust compiler and validator as any other workflow, and can be edited or deleted node by node.
+
+## Available Macros
+
+<CardGroup cols={2}>
+  <Card title="Parallel" icon="arrows-split-up-and-left">
+    Inserts a `group` node configured with `execution: parallel` and `exit: aggregate`, two `agent` nodes as members, and a downstream `join` node with the `all` policy. Use this macro as the starting point for any fan-out topology where multiple agents work on the same input independently.
+  </Card>
+  <Card title="Pipeline" icon="arrow-right">
+    Inserts a sequence of `agent` nodes connected by `data` edges. Each agent's output becomes the next agent's input. Use this macro for linear, multi-step processing where each step transforms or refines the previous step's result.
+  </Card>
+  <Card title="Reduce" icon="compress">
+    Inserts a parallel phase (a `group` with `execution: parallel`) followed by a `transform` node configured with `operation: aggregate` to collect all member outputs into one object. Use this macro for fan-out research or generation followed by synthesis.
+  </Card>
+  <Card title="Verify" icon="circle-check">
+    Inserts a `draft` agent node, an `evaluate` node, and a bounded `loop` node with `maxIterations: 3` and `onExhausted: stop`. The loop's `exitCondition` references the evaluate node's `passed` output. Use this macro for any critique-and-revise pattern.
+  </Card>
+</CardGroup>
+
+## Using a Macro
+
+<Steps>
+  <Step title="Open the palette and find the Macros section">
+    Click the palette icon in the left toolbar to open the node palette. Scroll to the **Macros** section at the bottom, or type "macro" in the palette search box.
+  </Step>
+  <Step title="Drag a macro to the canvas">
+    Click and drag the macro you want to the position on the canvas where you want the topology to appear. Release the mouse button to drop it.
+  </Step>
+  <Step title="The macro expands into canonical nodes and edges immediately">
+    The macro instantiates all of its nodes and edges at once. You will see them appear on the canvas and in the LGIR YAML panel simultaneously. The compiler runs a fresh analysis automatically.
+  </Step>
+  <Step title="Inspect and customize individual nodes as needed">
+    Click any generated node to open it in the inspector. Update the `name`, `role`, `prompt`, capabilities, and any config fields. Rename node IDs in the YAML panel if you want clearer identifiers. Add or remove edges using the standard canvas tools.
+  </Step>
+</Steps>
+
+## After Insertion
+
+All nodes and edges created by a macro appear directly in `spec.nodes` and `spec.edges` in the LGIR YAML. There is no macro wrapper, no template reference, and no post-processing step at compile time. You can:
+
+- **Edit** any generated node individually in the inspector or the YAML panel.
+- **Rename** node IDs — just update every reference to the old ID in `edges` and any `body` or `members` lists.
+- **Delete** any generated node or edge that you do not need.
+- **Add** new nodes and edges to the generated topology exactly as you would to a hand-built workflow.
+
+The compiled artifact reflects the current state of the YAML. If you rename a generated agent's role and update its prompt, the artifact contains your updated version. There is no macro state to reconcile.
+
+<Note>
+  Macros create sensible defaults — a three-iteration loop bound, `parallel` execution in the group, `all` as the join policy — but these defaults are starting points, not recommendations. Review every generated node before compiling, especially `role` and `prompt` on agent nodes, and adjust `maxIterations` and `onExhausted` on any loop node to match your workflow's actual requirements.
+</Note>

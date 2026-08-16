@@ -1,0 +1,101 @@
+---
+title: "How Ladder Graph Stores Your Workflows Locally"
+sidebarTitle: "Persistence"
+description: "Ladder Graph saves projects, revision history, and templates to your browser's IndexedDB and OPFS storage. No data is sent to any server."
+---
+
+Ladder Graph keeps every workflow you build entirely inside your browser. There is no account to sign in to, no cloud sync, and no telemetry — your projects live in two browser storage APIs (IndexedDB and OPFS) that only your browser can read. This page explains how that storage is structured, how autosave and revision history work, and what you should know about browser storage limits.
+
+## Storage Mechanism
+
+Ladder Graph uses two complementary browser storage APIs:
+
+- **IndexedDB** holds project metadata, the active YAML for each project, the last known-valid YAML, the selected compilation target, template indexes, and revision index records.
+- **OPFS (Origin Private File System)** stores revision body content when the API is available in your browser. When OPFS is unavailable, revision bodies fall back to IndexedDB automatically.
+
+This split keeps the IndexedDB store lean — large YAML blobs are offloaded to OPFS — while ensuring the revision history remains accessible regardless of which APIs your browser supports.
+
+## Projects
+
+Each project is saved as a `ProjectRecord` with the following shape:
+
+```typescript
+export interface ProjectRecord {
+  id: string;           // UUID, generated at creation time
+  name: string;         // Display name shown in the project list
+  yaml: string;         // The current (possibly draft) YAML content
+  lastValidYaml: string; // Most recent YAML that passed validation
+  target: Target;       // "codex" | "claude" | "hermes" | "python" | "typescript"
+  createdAt: number;    // Unix timestamp (ms)
+  updatedAt: number;    // Unix timestamp (ms), updated on every save
+}
+```
+
+Project IDs are generated using `crypto.randomUUID()`. Every save — including autosaves — updates `updatedAt` and re-writes both the active YAML and the last-valid YAML.
+
+## Autosave
+
+Ladder Graph autosaves your work automatically as you edit. You do not need to press a save button.
+
+Valid and invalid drafts are saved separately:
+
+- `yaml` always reflects your most recent edit, even if it contains a syntax error.
+- `lastValidYaml` is updated only when the YAML parses and validates successfully.
+
+If you introduce a syntax error, the canvas becomes read-only but the YAML editor remains active. Ladder Graph continues saving your draft. When you fix the error, `lastValidYaml` advances to the repaired YAML and the canvas updates immediately.
+
+## Revision History
+
+Every save creates a new revision record. Ladder Graph keeps the **30 most recent revisions** per project and prunes older entries automatically. Revisions include a `valid` flag so you can identify which entries in the revision history panel represent clean states versus work-in-progress drafts.
+
+Revision bodies are stored in OPFS when available, referenced from IndexedDB by a `storageKey`. If OPFS is unavailable, the body is stored inline in IndexedDB.
+
+```typescript
+interface RevisionRecord {
+  id: string;
+  projectId: string;
+  createdAt: number;
+  storageKey: string;   // e.g. "<projectId>-<revisionId>"
+  valid: boolean;       // true = passed validation at save time
+  body?: string;        // set only when OPFS is unavailable
+}
+```
+
+You can browse and restore revisions from the revision history panel in the studio. You can also export any individual revision directly — see [Import & Export](/data/import-export).
+
+## Persistent Storage Request
+
+By default, browsers treat site storage as evictable — they may clear it under storage pressure without warning. Ladder Graph requests **persistent storage** from the browser, but only after you take an explicit action such as saving a project for the first time.
+
+Persistent storage means the browser will not evict your data without explicit user action. The request is advisory: the browser may grant or deny it based on your engagement with the site, your browser settings, or platform policy. Ladder Graph surfaces the current persistence state in the Storage dialog so you always know where you stand.
+
+## Storage Dialog
+
+Open the **Storage** dialog from the project menu (top-left of the studio) to inspect:
+
+- **Usage** — how many bytes your projects and revisions currently occupy
+- **Quota** — the total storage budget the browser has allocated to Ladder Graph
+- **Persistence** — whether the browser has granted persistent storage for this origin
+- **OPFS availability** — whether the Origin Private File System API is available in your browser
+
+<Warning>
+Browser storage is not a durable backup. Browsers can clear non-persistent storage under storage pressure, and clearing site data in your browser settings permanently removes all projects and revision history. **Export any workflow you want to keep** as a YAML file and store it somewhere safe. See [Import & Export](/data/import-export) for instructions.
+</Warning>
+
+## PWA Offline Support
+
+Ladder Graph is a Progressive Web App. After the first load, it works fully offline — no network connection is required for editing, validating, or compiling workflows.
+
+The service worker precaches everything the app needs to run:
+
+- The application shell (HTML, CSS, JavaScript)
+- The LGIR JSON Schema (`public/schema/lgir-v1alpha1.schema.json`)
+- Self-hosted fonts
+- The compiler Web Worker
+- The Rust-compiled WebAssembly module
+
+Once these assets are cached, opening Ladder Graph in a tab — or launching it as an installed PWA — loads entirely from your device. There is no CDN or backend to reach.
+
+<Note>
+Ladder Graph has no server sync, no user account, and no telemetry. All project data, revision history, and templates are stored exclusively in your browser's IndexedDB and OPFS. Nothing is transmitted over the network at any point during your session.
+</Note>

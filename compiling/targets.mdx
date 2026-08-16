@@ -1,0 +1,91 @@
+---
+title: "Compilation Targets: Codex, Claude, Hermes, Python, TypeScript"
+sidebarTitle: "Targets"
+description: "Choose from five compilation targets to generate a self-contained artifact. Markdown targets produce agent skill files; code targets produce typed data modules."
+---
+
+A **compilation target** tells Ladder Graph which adapter to use when converting your LGIR workflow into a deployable artifact. The target you choose determines the artifact's format, its suggested filename, the MIME type reported by the compiler, and the capability suggestions you see in the inspector. Selecting the right target for your harness is the single decision that shapes everything downstream — from how loop bounds are expressed to which OpenRouter connectors appear in the catalog.
+
+## Selecting a Target
+
+Open the **compiler drawer** at the bottom of the studio to reveal the target selector. The selector lists all five targets: **Codex**, **Claude**, **Hermes**, **Python**, and **TypeScript**. Changing the target does not discard your workflow — it re-runs analysis with the new target context and refreshes the diagnostics panel and capability suggestions immediately.
+
+<Note>
+The target you select is stored as part of the project record alongside your YAML. If you reopen a project, Ladder Graph restores your last-used target automatically.
+</Note>
+
+## Markdown Targets
+
+Markdown targets produce self-contained skill files that you paste or save into your agent harness. Every Markdown artifact includes a YAML frontmatter block with target metadata and a documentation date, an objective section, operating rules, and a node-by-node instruction sequence in topological order.
+
+<CardGroup cols={3}>
+  <Card title="codex" icon="code">
+    Generates an **Agent Skills**-compatible Markdown file. The frontmatter includes `ladder-target: codex`, the source hash, and the compiler version. Save the artifact as `.agents/skills/<name>.md` or reference it from your repository's `AGENTS.md`.
+  </Card>
+  <Card title="claude" icon="message-square">
+    Generates a `SKILL.md`-format file compatible with Claude Code. Save the artifact as `.claude/skills/<name>.md` to make it available to Claude in that repository context.
+  </Card>
+  <Card title="hermes" icon="terminal">
+    Generates a Hermes Agent skill with `metadata.hermes` fields including `tags`, `category`, and a Ladder Graph source hash. Save the artifact as `~/.hermes/skills/ladder-graph/<workflow>/SKILL.md`. The skill includes a **Hermes setup** section reminding you to confirm every named toolset and MCP server before use.
+  </Card>
+</CardGroup>
+
+### A note on the Hermes target
+
+Hermes toolsets, MCP servers, and OpenRouter profiles are **explicit capability requirements** declared inside the artifact's instructions — they are not configured automatically. Ladder Graph does not edit `~/.hermes/config.yaml` or any other Hermes configuration file. You remain responsible for enabling the required toolsets for the active Hermes profile before running the skill.
+
+## Code Targets
+
+Code targets produce deterministic, importable data modules. Unlike Markdown targets, they carry no prose instructions — they expose your workflow's structure, ordering, and capability declarations as inert, typed data for your own host application to consume.
+
+<CardGroup cols={2}>
+  <Card title="python" icon="python">
+    Generates a `.ladder.py` module (e.g., `my-workflow.ladder.py`) containing:
+    - `WORKFLOW` — the normalized workflow dict
+    - `NODE_ORDER` — nodes in stable topological order
+    - `DEPENDENCIES` — per-node upstream dependency lists
+    - `CAPABILITY_MANIFEST` — per-node skill, connector, tool, and permission declarations
+    - `ready_nodes(completed)` — a pure helper that returns the next executable node IDs given a set of completed IDs
+    - `capability_contract(node_id)` — returns a node's declarative templates without invoking them
+  </Card>
+  <Card title="typescript" icon="code-2">
+    Generates a `.ladder.ts` module (e.g., `my-workflow.ladder.ts`) with the same structure as the Python module, plus TypeScript types (`LadderNodeId`, `LadderGraphData`) and a `readyNodes(completed)` helper with full type inference. The module uses `as const` assertions for safe narrowing.
+  </Card>
+</CardGroup>
+
+<Warning>
+The Python and TypeScript modules do **not** import providers, invoke connectors, evaluate node expressions, or execute nodes. They are purely declarative data. Your host application must supply and authorize every runtime handler explicitly.
+</Warning>
+
+## Target Capabilities
+
+Every target publishes a **capability report** that classifies each workflow construct as one of three states:
+
+| State | Meaning |
+|-------|---------|
+| `native` | The target handles this construct directly and without approximation. |
+| `instructional` | The target expresses the construct as explicit instructions rather than a mechanical runtime guarantee — for example, loop bounds, approval gates, and connector requirements in Markdown targets. |
+| `unsupported` | The target cannot handle this construct at all. |
+
+Unsupported constructs are **never silently omitted**. The compiler always emits a diagnostic with severity `error` when an unsupported construct is present, and blocks compilation until it is resolved. This ensures the artifact you download accurately represents your workflow.
+
+## Capability Catalog
+
+Switching targets updates the skill and connector suggestions that appear in the **inspector** when you select an agent or tool node. Each target surfaces a curated catalog tuned to its harness:
+
+- **Codex** includes `repository-navigation` and OpenAI docs skills alongside the full shared skill list.
+- **Claude** leads with `codebase-analysis` and `subagent-delegation`.
+- **Hermes** includes Hermes-native toolset connectors (`hermes:toolset:web`, `hermes:toolset:terminal`, `hermes:toolset:file`, and more) and the `provider:openrouter` connector, alongside shared MCP connectors.
+- **Python** and **TypeScript** include `python-callable` / `typescript-handler` and `schema-validation` skills respectively, reflecting that code targets bind to host-supplied handlers rather than harness catalogs.
+
+### OpenRouter multimodal connectors
+
+All targets expose 15 pre-built OpenRouter multimodal connectors covering image generation, image editing, video generation, speech synthesis, music generation, audio transcription, and async media job orchestration. These profiles appear by name in the inspector and are written into the compiled artifact as declared connector requirements.
+
+<Warning>
+OpenRouter profiles are **research snapshots**. Model slugs, supported parameters, asynchronous behavior, endpoint paths, pricing, and availability change without notice. Always verify each profile against the current OpenRouter documentation before deploying a workflow that depends on it. Provider credentials must **never** be stored in LGIR or in any compiled artifact.
+</Warning>
+
+<Note>
+Ladder Graph is a compiler, not an agent runtime. It does not connect to any model provider, invoke any MCP server, execute shell commands, or make network requests of any kind. Every artifact it produces is a text file that you deploy and run in your own environment.
+</Note>

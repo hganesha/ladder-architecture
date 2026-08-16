@@ -1,0 +1,119 @@
+---
+title: "Understanding and Fixing Compiler Diagnostics"
+sidebarTitle: "Diagnostics"
+description: "Ladder Graph's compiler emits diagnostics with stable codes, severity levels, and safe repair suggestions. Errors block compilation; warnings and info do not."
+---
+
+Diagnostics are the compiler's precise, structured way of telling you what is wrong with your workflow, what might produce unexpected output, or what you should know about how a construct is handled by your chosen target. Every diagnostic carries a stable code you can reference, a severity that determines whether compilation is blocked, and — when a safe automated repair exists — a structured fix you can apply with a single click.
+
+## Diagnostic Anatomy
+
+Each diagnostic the compiler emits is a structured object with the following fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `code` | string | Stable identifier, e.g. `LG120`. Codes are stable across compiler versions so you can search, filter, and bookmark them. |
+| `severity` | `error` \| `warning` \| `info` | Determines whether the diagnostic blocks compilation. |
+| `path` | string | YAML path to the problematic element, e.g. `spec.nodes[2].config.maxIterations`. Use this to jump directly to the source location. |
+| `nodeId` | string (optional) | The ID of the affected node, if the diagnostic is node-scoped. |
+| `edgeId` | string (optional) | The ID of the affected edge, if the diagnostic is edge-scoped. |
+| `message` | string | Human-readable explanation of the issue. |
+| `capability` | `native` \| `instructional` \| `unsupported` (optional) | Indicates how the selected target handles the flagged construct. Present on informational target-capability diagnostics. |
+| `fix` | object (optional) | A structured repair containing a `label`, a `path`, and a `value`. Applying it patches the YAML automatically. |
+
+## Severity Levels
+
+<Tabs>
+  <Tab title="Error">
+    **The graph is invalid. Compilation is blocked.**
+
+    You must resolve all errors before the compiler will produce an artifact. Errors cover structural problems that make the workflow semantically unsound — things like duplicate node IDs, missing edge endpoints, unbounded loops, arbitrary back-edge cycles, and invalid transform operations.
+
+    The **Compile** button in the compiler drawer is disabled while any error diagnostic is present. Fix all errors, then re-analyze before compiling.
+  </Tab>
+  <Tab title="Warning">
+    **The graph is valid, but may produce unexpected output.**
+
+    Warnings do not block compilation. They flag conditions that are structurally legal but likely unintentional — such as a missing role on an agent node, an undeclared tool identifier on a tool node, or connector requirements that the compiler documents but does not invoke. Review every warning before distributing an artifact.
+  </Tab>
+  <Tab title="Info">
+    **Informational note about capabilities or target behavior.**
+
+    Info diagnostics describe how your selected target handles a particular construct. For example, when you compile to any Markdown target, nodes of kind `approval`, `loop`, and `group` produce `LG200` info diagnostics explaining that the target expresses these as explicit instructions rather than a hard runtime guarantee. Info diagnostics always carry a `capability` field set to `instructional`.
+  </Tab>
+</Tabs>
+
+## Common Errors
+
+<AccordionGroup>
+  <Accordion title="Duplicate node IDs (LG110)">
+    **What it means:** Two or more nodes share the same `id` value. Node IDs must be unique within a workflow because they are the keys used by edges, loop bodies, and group member lists.
+
+    **How to fix it:** Open the YAML editor and assign a distinct, lowercase-slug ID to each node. The diagnostic's `path` field tells you the index of the duplicate node in `spec.nodes`.
+  </Accordion>
+
+  <Accordion title="Missing edge endpoint (LG141 / LG142)">
+    **What it means:** An edge's `from` (LG141) or `to` (LG142) field references a node ID that does not exist in `spec.nodes`. This typically happens after renaming or deleting a node without updating the edges that reference it.
+
+    **How to fix it:** Either restore the missing node, or update the edge to reference an existing node ID. The diagnostic's `edgeId` field identifies the broken edge.
+  </Accordion>
+
+  <Accordion title="Unbounded loop (LG120)">
+    **What it means:** A `loop` node has `maxIterations` set to `0` or above `100`. Every loop must declare an explicit iteration bound between 1 and 100 inclusive — this is a hard semantic requirement, not a style guideline.
+
+    **Safe repair available:** This diagnostic includes a `fix` that sets `maxIterations` to `3`. Click the **Repair** button in the Diagnostics panel to apply it, then adjust the value to match your workflow's actual requirements.
+
+    **Why this matters:** Unbounded or excessively-bounded loops can cause agent harnesses to run indefinitely. The compiler treats every loop as a contract with an explicit ceiling.
+  </Accordion>
+
+  <Accordion title="Missing exit condition (LG121)">
+    **What it means:** A `loop` node has no `exitCondition`. Every loop must reference a condition or evaluator result that determines when iteration should stop. Without it, the loop has no termination signal.
+
+    **How to fix it:** Set `config.exitCondition` to the ID of a `condition` or `evaluate` node whose result signals completion (e.g., `score >= 0.8`).
+  </Accordion>
+
+  <Accordion title="Cycle detected (LG150)">
+    **What it means:** The edge graph contains a cycle that is not enclosed within a structured `loop` node — a back-edge that makes the workflow a non-DAG. Arbitrary cycles are not allowed because they prevent deterministic topological ordering.
+
+    **How to fix it:** Replace the cycle with a `loop` node that owns a `body` list, an `exitCondition`, and a bounded `maxIterations`. Back-edges and self-edges within `loop` bodies are equally invalid; the loop node itself is the structured mechanism for repetition.
+  </Accordion>
+
+  <Accordion title="Invalid transform operation (LG115)">
+    **What it means:** A `transform` node's `config.operation` is not one of the seven allowed values: `select`, `rename`, `merge`, `filter`, `deduplicate`, `sort`, or `slice`.
+
+    **How to fix it:** Set `config.operation` to a supported value. If none of the declarative operations fit your use case, consider using an `agent` node with an explicit prompt instead.
+  </Accordion>
+
+  <Accordion title="Unsupported target construct (LG111 / LG300)">
+    **What it means:** Either a node's `kind` is not one of the twelve supported kinds (`input`, `output`, `agent`, `tool`, `transform`, `condition`, `evaluate`, `approval`, `join`, `loop`, `group`, `subgraph`), or you passed an unrecognized target name to the compiler.
+
+    **How to fix it:** Replace the node kind with a supported value, or verify that the target string is exactly `codex`, `claude`, `hermes`, `python`, or `typescript`.
+  </Accordion>
+</AccordionGroup>
+
+## Applying a Fix
+
+When a diagnostic includes a `fix` object, the **Diagnostics panel** shows a **Repair** button next to it. Click **Repair** to apply the structured patch — it writes the suggested `value` to the diagnostic's `path` in your YAML document and re-runs analysis immediately.
+
+<Steps>
+  <Step title="Locate the diagnostic">
+    Find the diagnostic in the Diagnostics panel. Diagnostics with available repairs show a **Repair** button alongside the error message.
+  </Step>
+  <Step title="Review the fix label">
+    Read the repair label before applying it — for example, *"Set a safe three-iteration bound"*. The fix is a conservative safe default, not necessarily the final value you want.
+  </Step>
+  <Step title="Apply the repair">
+    Click **Repair**. The YAML is patched, analysis re-runs, and the diagnostic disappears if the fix resolved the issue.
+  </Step>
+  <Step title="Adjust the value">
+    Open the YAML editor or inspector to tune the patched value to your workflow's actual requirements. The repair unblocks compilation; you finalize the semantics.
+  </Step>
+</Steps>
+
+## Diagnostics Panel
+
+The **Diagnostics panel** lives inside the compiler drawer at the bottom of the studio. It lists every active diagnostic sorted by severity — errors first, then warnings, then info. Each row displays the diagnostic code, message, and affected node or edge name. Click any row to highlight the referenced element on the canvas and scroll the YAML editor to the relevant line.
+
+<Tip>
+Use your keyboard to navigate diagnostics quickly. Press **Enter** on a selected diagnostic row to jump the canvas focus to the node or edge it references. This lets you inspect and fix problems without switching between the panel and the canvas manually.
+</Tip>

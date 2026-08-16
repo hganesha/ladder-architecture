@@ -1,0 +1,188 @@
+---
+title: "AnalysisResult: Validation Output from the Compiler"
+sidebarTitle: "AnalysisResult"
+description: "AnalysisResult is returned by analyze(). It reports whether the workflow is valid, its diagnostics, normalized form, topological node order, and graph statistics."
+---
+
+`AnalysisResult` is the object returned by [`compiler.analyze()`](/lgir/compiler-api#analyze-yaml-target). It tells you whether the workflow is structurally and semantically valid, surfaces every diagnostic the compiler produced, and — when the document is error-free — provides the normalized workflow, a stable topological node order, and a graph statistics summary. You can use `AnalysisResult` to gate further processing: if `ok` is `false`, do not attempt to compile.
+
+## AnalysisResult Fields
+
+<ResponseField name="ok" type="boolean" required>
+  `true` if no error-severity diagnostics were produced during validation. Warnings and info diagnostics do not affect `ok`. Use this as your primary gate before reading `normalized` or calling `compile`.
+</ResponseField>
+
+<ResponseField name="sourceHash" type="string" required>
+  SHA-256 of the normalized YAML document, encoded as a hex string. The hash is computed from the semantically normalized form, so whitespace and comment differences do not change it. Use this to detect whether two YAML strings represent the same workflow.
+</ResponseField>
+
+<ResponseField name="diagnostics" type="Diagnostic[]" required>
+  All diagnostics produced during validation, across all severity levels. An empty array means the workflow passed without any notes. See the [Diagnostic Fields](#diagnostic-fields) section below for the full shape.
+</ResponseField>
+
+<ResponseField name="normalized" type="Workflow | undefined">
+  The parsed and normalized workflow document. Present only when `ok` is `true` — if any error-severity diagnostic exists, `normalized` is `undefined`. You can use the normalized form to read back computed defaults and canonical field values.
+</ResponseField>
+
+<ResponseField name="nodeOrder" type="string[]" required>
+  Stable topological ordering of all node IDs, computed by the Rust compiler using Kahn's algorithm over the dependency and control edges. The order is deterministic across calls for the same document. Use this to drive display order, progress tracking, or any host-side processing that must respect data dependencies.
+</ResponseField>
+
+<ResponseField name="stats" type="Stats" required>
+  Aggregate graph statistics. See the [Stats Fields](#stats-fields) section below.
+</ResponseField>
+
+---
+
+## Stats Fields
+
+<Expandable title="Stats">
+  <ResponseField name="nodes" type="number" required>
+    Total number of nodes in the workflow, regardless of kind.
+  </ResponseField>
+
+  <ResponseField name="edges" type="number" required>
+    Total number of edges, including data, dependency, and control edges.
+  </ResponseField>
+
+  <ResponseField name="agents" type="number" required>
+    Count of nodes with kind `agent` or `evaluate`. Use this to gauge prompt complexity at a glance.
+  </ResponseField>
+
+  <ResponseField name="loops" type="number" required>
+    Count of nodes with kind `loop`. Each loop node introduces a bounded iteration constraint; higher counts increase the need for careful `maxIterations` configuration.
+  </ResponseField>
+
+  <ResponseField name="maxParallelism" type="number" required>
+    Maximum number of nodes that can execute concurrently at any point, based on the graph's topological structure. Computed as the largest frontier width observed during the Kahn traversal. A value of `1` means the workflow is strictly sequential; higher values indicate opportunities for parallel execution.
+  </ResponseField>
+</Expandable>
+
+---
+
+## Diagnostic Fields
+
+<Expandable title="Diagnostic">
+  <ResponseField name="code" type="string" required>
+    Stable diagnostic code such as `"LG120"` or `"LG200"`. Codes are permanent — you can use them in automation to detect specific conditions without matching on message text.
+  </ResponseField>
+
+  <ResponseField name="severity" type='"error" | "warning" | "info"' required>
+    Impact level of the diagnostic. `"error"` diagnostics cause `ok: false` and block compilation. `"warning"` and `"info"` diagnostics are informational — they are included in `diagnostics` but do not block compilation.
+  </ResponseField>
+
+  <ResponseField name="path" type="string" required>
+    JSONPath-style YAML path to the affected element, for example `/spec/nodes/2/config/maxIterations`. Use this to highlight the relevant line in an editor or to apply a `fix` programmatically.
+  </ResponseField>
+
+  <ResponseField name="nodeId" type="string | undefined">
+    ID of the affected node, if the diagnostic is node-scoped. `undefined` for document-level or edge-level diagnostics.
+  </ResponseField>
+
+  <ResponseField name="edgeId" type="string | undefined">
+    ID of the affected edge, if the diagnostic is edge-scoped. `undefined` for document-level or node-level diagnostics.
+  </ResponseField>
+
+  <ResponseField name="message" type="string" required>
+    Human-readable description of the problem. Suitable for display in a UI or CLI. Do not key automation on message text — use `code` instead.
+  </ResponseField>
+
+  <ResponseField name="capability" type='"native" | "instructional" | "unsupported" | undefined'>
+    Capability classification relative to the requested target, present only when a `target` was passed to `analyze`. `"instructional"` means the construct is expressed as explicit instructions rather than a hard runtime guarantee. `"unsupported"` means the target cannot represent the construct at all and compilation will be blocked.
+  </ResponseField>
+
+  <ResponseField name="fix" type="Fix | undefined">
+    A machine-applicable repair, if the compiler can provide one. See the [Fix Fields](#fix-fields) section below.
+  </ResponseField>
+</Expandable>
+
+---
+
+## Fix Fields
+
+<Expandable title="Fix">
+  <ResponseField name="label" type="string" required>
+    Human-readable description of what the fix does, suitable for display in an "Apply fix" button or tooltip. For example: `"Set a safe three-iteration bound"`.
+  </ResponseField>
+
+  <ResponseField name="path" type="string" required>
+    JSONPath-style YAML path to the field that should be patched, for example `/spec/nodes/2/config/maxIterations`. Apply the fix by writing `value` at this path in the YAML document.
+  </ResponseField>
+
+  <ResponseField name="value" type="unknown" required>
+    The value to write at `path`. May be a number, string, boolean, array, or object depending on the field being patched.
+  </ResponseField>
+</Expandable>
+
+---
+
+## TypeScript Type
+
+```typescript
+export interface AnalysisResult {
+  ok: boolean;
+  sourceHash: string;
+  diagnostics: Diagnostic[];
+  normalized?: Workflow;
+  nodeOrder: string[];
+  stats: Stats;
+}
+
+export interface Stats {
+  nodes: number;
+  edges: number;
+  agents: number;
+  loops: number;
+  maxParallelism: number;
+}
+
+export interface Diagnostic {
+  code: string;
+  severity: "error" | "warning" | "info";
+  path: string;
+  nodeId?: string;
+  edgeId?: string;
+  message: string;
+  capability?: "native" | "instructional" | "unsupported";
+  fix?: Fix;
+}
+
+export interface Fix {
+  label: string;
+  path: string;
+  value: unknown;
+}
+```
+
+---
+
+## Usage Example
+
+The following example runs analysis against the `"codex"` target, prints any diagnostics, and then logs the stable node execution order when the document is valid.
+
+```typescript
+const result = await compiler.analyze(yaml, "codex");
+
+if (!result.ok) {
+  console.error(`Validation failed (${result.diagnostics.length} error(s)):`);
+  for (const d of result.diagnostics) {
+    if (d.severity === "error") {
+      console.error(`  [${d.code}] ${d.path} — ${d.message}`);
+      if (d.fix) {
+        console.error(`    Fix: ${d.fix.label} (set ${d.fix.path} = ${JSON.stringify(d.fix.value)})`);
+      }
+    }
+  }
+} else {
+  console.log("Workflow is valid.");
+  console.log("Node execution order:", result.nodeOrder.join(" → "));
+  console.log(
+    `Graph: ${result.stats.nodes} nodes, ${result.stats.edges} edges, ` +
+    `max parallelism ${result.stats.maxParallelism}`
+  );
+}
+```
+
+<Tip>
+  Pass a `target` to `analyze` before calling `compile`. This surfaces capability diagnostics (codes `LG200` and `LG201`) early so you can decide whether the instructional treatment of loops, approvals, and connectors is acceptable for your use case before generating the artifact.
+</Tip>

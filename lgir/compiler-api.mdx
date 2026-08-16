@@ -1,0 +1,144 @@
+---
+title: "Compiler API: analyze, compile, format, migrate"
+sidebarTitle: "Compiler API"
+description: "The Ladder Graph compiler exposes four operations via a Web Worker client: analyze, compile, format, and migrate. All are asynchronous and return typed result objects."
+---
+
+The Ladder Graph compiler runs in a dedicated Web Worker and communicates with the main thread via message passing. You never instantiate the worker yourself — you import the singleton `compiler` client, which provides a fully Promise-based API. Every method posts a message to the worker, waits for the matching response, and resolves or rejects the returned Promise.
+
+## Architecture
+
+The browser-side `CompilerClient` posts typed messages to the worker over the structured-clone channel. On startup, the worker attempts to load the compiled Rust/WASM module from `src/wasm/pkg/lgir_core.js`. If that module initializes successfully, every subsequent operation runs through the Rust engine. If WASM is unavailable — for example, in an environment where `WebAssembly` is restricted — the worker falls back to the TypeScript parity implementation automatically. You interact only with the client; the runtime selection is transparent.
+
+```typescript
+import { compiler } from "./src/compiler/client";
+
+// The compiler client is a singleton — import and call it directly.
+const result = await compiler.analyze(yaml, "codex");
+```
+
+## Runtime Detection
+
+After the first operation completes, `compiler.runtime` reflects which engine the worker chose. Read this property after your first call — it is `"fallback"` until the worker replies with its runtime choice.
+
+| Value | Meaning |
+|---|---|
+| `"wasm"` | Rust module loaded and initialized successfully |
+| `"fallback"` | TypeScript parity implementation is active |
+
+```typescript
+await compiler.analyze(yaml);
+console.log(compiler.runtime); // "wasm" or "fallback"
+```
+
+## Operations
+
+### `analyze(yaml, target?)`
+
+**Signature:** `analyze(yaml: string, target?: Target): Promise<AnalysisResult>`
+
+Runs validation without compilation. Use `analyze` to check diagnostics and receive a capability report before committing to a target. Passing `target` adds target-aware capability diagnostics (codes `LG200` and `LG201`) to the result; omit it for a pure structural check.
+
+```typescript
+const result = await compiler.analyze(yaml, "codex");
+if (!result.ok) {
+  for (const d of result.diagnostics) {
+    console.error(`[${d.severity}] ${d.code}: ${d.message}`);
+  }
+}
+```
+
+See [AnalysisResult](/lgir/analysis-result) for the complete field reference.
+
+---
+
+### `compile(yaml, target)`
+
+**Signature:** `compile(yaml: string, target: Target): Promise<CompileResult>`
+
+Validates and compiles the workflow to the specified target. Compilation is blocked when any error-severity diagnostic exists — `result.ok` will be `false` and `result.content` will be empty. On success, the result includes the full artifact text, a suggested filename, the MIME type, a SHA-256 source hash, compiler and adapter version strings, and a per-target capability report.
+
+```typescript
+const result = await compiler.compile(yaml, "typescript");
+if (result.ok) {
+  console.log(result.suggestedFilename); // e.g., "my-workflow.ladder.ts"
+  console.log(result.content);           // the full artifact text
+}
+```
+
+See [CompileResult](/lgir/compile-result) for the complete field reference.
+
+---
+
+### `format(yaml)`
+
+**Signature:** `format(yaml: string): Promise<FormatResult>`
+
+Normalizes the YAML document with canonical indentation and field ordering. Use `format` to clean up hand-edited YAML before committing it or sharing it with teammates. The returned `content` is the reformatted YAML string; `ok` is `false` if the document could not be parsed at all.
+
+```typescript
+const result = await compiler.format(yaml);
+if (result.ok) {
+  console.log(result.content); // formatted YAML string
+}
+```
+
+---
+
+### `migrate(yaml, toVersion)`
+
+**Signature:** `migrate(yaml: string, toVersion: string): Promise<MigrationResult>`
+
+Upgrades a workflow document from an older LGIR version to `toVersion`. The compiler rewrites `apiVersion` and re-serializes the document through the current Rust schema. Currently the only valid target version is `"ladder.dev/v1alpha1"`. Passing any other value returns `ok: false` with diagnostic code `LG400`.
+
+```typescript
+const result = await compiler.migrate(yaml, "ladder.dev/v1alpha1");
+if (result.ok) {
+  console.log(result.content); // migrated YAML
+}
+```
+
+---
+
+## Target Type
+
+All four operations accept a `Target` string. The union is:
+
+```typescript
+type Target = "codex" | "claude" | "hermes" | "python" | "typescript";
+```
+
+| Target | Output format | Suggested path |
+|---|---|---|
+| `codex` | Markdown skill (Agent Skills frontmatter) | `.agents/skills/<name>.md` |
+| `claude` | Markdown skill (Claude Code frontmatter) | `.claude/skills/<name>.md` |
+| `hermes` | Markdown skill (Hermes SKILL.md metadata) | `~/.hermes/skills/ladder-graph/<name>/SKILL.md` |
+| `python` | Importable `.ladder.py` data module | `<name>.ladder.py` |
+| `typescript` | Typed `.ladder.ts` data module | `<name>.ladder.ts` |
+
+## Error Handling
+
+The Promise rejects only if the worker encounters an unrecoverable internal error — for example, if the worker process crashes or the message channel closes unexpectedly. All other outcomes are returned as typed result objects.
+
+Non-fatal issues are surfaced as diagnostics inside the result: `ok` is `false` and `diagnostics` contains one or more entries with their severity, stable code, source path, and an optional machine-applicable fix. Check `result.ok` before using `result.content`.
+
+```typescript
+try {
+  const result = await compiler.compile(yaml, "codex");
+  if (!result.ok) {
+    // Non-fatal: validation failed. Inspect diagnostics.
+    for (const d of result.diagnostics) {
+      if (d.fix) {
+        console.log(`Auto-fix available: ${d.fix.label}`);
+      }
+    }
+  }
+} catch (error) {
+  // Unrecoverable: worker crashed or channel closed.
+  console.error("Compiler worker failed:", error);
+}
+```
+
+<Note>
+  The compiler is the same engine used by the Ladder Graph studio. Calling `compile` programmatically produces identical output to clicking **Compile** in the UI for the same YAML and target — including the source hash, artifact content, and capability report.
+</Note>

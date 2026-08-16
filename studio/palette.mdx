@@ -1,0 +1,92 @@
+---
+title: "Using the Node Palette to Build Workflows"
+sidebarTitle: "Palette"
+description: "Browse, search, and drag node kinds from the palette to the canvas. The palette groups nodes by category: Flow, Work, Data, and Control."
+---
+
+The palette is your primary tool for adding new elements to a workflow. It lives in the left sidebar of Ladder Graph Studio and gives you instant access to every node kind, a set of visual macros for common multi-node topologies, and a library of pre-built agent role templates. From the palette, you can click any item to add it to the canvas in one step.
+
+## Opening the Palette
+
+The palette is visible in the left sidebar by default. Toggle it open or closed using the **palette button** (the library icon) in the studio header. On narrow screens, the palette and inspector cannot be open at the same time — opening one will close the other. A translucent scrim appears behind the open panel on mobile so you can tap outside to dismiss it.
+
+When a **group node** is selected on the canvas, the palette shows a context banner indicating that new nodes will be added as members of that group. Click the × button on the banner or click away from the group to exit group-placement mode.
+
+## Palette Categories
+
+The palette **Primitives** section lists every available node kind. Nodes are organized by category:
+
+| Category | Node kinds |
+|---|---|
+| **Flow** | Input, Output, Group, Subgraph |
+| **Work** | Agent, Tool requirement |
+| **Data** | Transform |
+| **Control** | Condition, Evaluate, Approval, Join, Loop |
+
+Each entry shows a **color dot** matching the node's canvas color, a **label**, and a one-line **hint** describing its purpose:
+
+| Node kind | Hint |
+|---|---|
+| Input | Workflow objective and typed inputs |
+| Output | Final completion contract |
+| Agent | One focused role and prompt |
+| Tool requirement | Declarative capability only |
+| Transform | Safe declarative data mapping |
+| Condition | Branch on an explicit expression |
+| Evaluate | Score or critique a result |
+| Approval | Pause for explicit user consent |
+| Join | Wait for parallel branches |
+| Loop | Bounded structured revision |
+| Group | Bounded sequential or parallel phase |
+| Subgraph | Named collapsible phase |
+
+## Searching
+
+Type in the **Search library** field at the top of the palette to filter the primitives list and the agent templates list simultaneously. The search matches against the node label, hint text, and category name, so you can type `"parallel"` to surface Join and Group, or `"review"` to find relevant agent role templates.
+
+Clear the search field to restore the full list.
+
+## Adding Nodes to the Canvas
+
+Click any node kind button in the Primitives section to add it to the canvas. The node is placed at a new auto-calculated position and immediately written into the LGIR YAML. You do not need to drag — a single click is enough.
+
+If you prefer to place a node at a specific location, drag the item from the palette and drop it at the exact position on the canvas where you want it to appear.
+
+## Default Values
+
+Every node kind arrives on the canvas pre-configured with sensible defaults so you have a working starting point without filling in every field manually:
+
+| Node kind | Pre-set defaults |
+|---|---|
+| Agent | Role: `"Workflow specialist"`, default prompt, empty `outputSchema: {type: object}` |
+| Evaluate | Role: `"Independent evaluator"`, evaluation prompt, `outputSchema` with `score`, `passed`, and `reasons` |
+| Transform | `operation: select`, `expression: $.result` |
+| Condition | Two branches: **Pass** (`when: true`) and **Revise** (`when: false`) |
+| Join | `join: all` (wait for all successful branches) |
+| Loop | `maxIterations: 3`, `exitCondition: evaluation.passed == true`, `onExhausted: stop` |
+| Group | `execution: parallel`, `exit: aggregate`, empty `members` list |
+
+These defaults are valid LGIR — you can compile a workflow containing a freshly added node without editing it first. Refine the fields in the inspector to match your workflow's specific requirements.
+
+## Visual Macros
+
+The **Visual macros** section at the top of the palette inserts pre-wired multi-node topologies in a single click:
+
+<CardGroup cols={2}>
+  <Card title="Parallel" icon="git-merge">
+    Inserts a fan-out group with two parallel agent branches and a join node. Use this as the starting point for any workflow where multiple agents work simultaneously on the same input.
+  </Card>
+  <Card title="Pipeline" icon="layers">
+    Inserts a linear chain of three agent nodes connected by dependency edges. Use this for sequential stage-by-stage workflows.
+  </Card>
+  <Card title="Reduce" icon="combine">
+    Inserts a group with parallel members that converge into a single aggregating agent. Use this when you need to synthesize outputs from multiple sources.
+  </Card>
+  <Card title="Verify" icon="shield-check">
+    Inserts an agent node connected to an evaluate node and a loop, wired so the loop iterates until the evaluator passes or the iteration limit is reached. Use this for any draft–critique–revise shape.
+  </Card>
+</CardGroup>
+
+<Tip>
+  Use visual macros for the most common multi-node topologies instead of wiring nodes individually. Each macro materializes fully connected canonical nodes and edges that the compiler can validate immediately. You can rename, reconfigure, and extend any macro after it lands on the canvas — macros are not locked or grouped in any special way.
+</Tip>

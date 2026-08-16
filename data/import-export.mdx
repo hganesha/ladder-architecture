@@ -1,0 +1,112 @@
+---
+title: "Importing and Exporting Workflows in Ladder Graph"
+sidebarTitle: "Import & Export"
+description: "Export your LGIR workflows as YAML files to back them up or share them. Import YAML files to restore a workflow or load one shared by a colleague."
+---
+
+Because Ladder Graph stores your projects only in your browser, exporting YAML files is the primary way to back up your work, move workflows between devices, and share them with other developers. Exported files are plain LGIR YAML — readable in any text editor, committable to version control, and importable into any Ladder Graph instance. This page walks you through exporting, importing, and what happens to a file when you import it.
+
+## Exporting a Workflow
+
+Exporting a project downloads its canonical LGIR YAML as a file to your device.
+
+<Steps>
+  <Step title="Open the project menu">
+    Click the project name or the menu icon in the top-left corner of the studio to open the project menu.
+  </Step>
+  <Step title="Select Export">
+    Choose **Export** from the menu. Ladder Graph writes the current active YAML to a file download immediately — no dialog is required.
+  </Step>
+  <Step title="Save the file">
+    Your browser downloads a `.yaml` file named after your project. Move it to a safe location such as your repository, a shared drive, or a backup folder.
+  </Step>
+</Steps>
+
+The exported file contains the full workflow YAML exactly as it appears in the YAML editor, including all nodes, edges, metadata, and capability customizations.
+
+## Importing a Workflow
+
+Importing a YAML file creates a new project in Ladder Graph from the file's contents.
+
+<Steps>
+  <Step title="Open the Import dialog">
+    From the welcome screen, click **Import**. Alternatively, open an existing project's menu and choose **Import** to import into the current context as a new project.
+  </Step>
+  <Step title="Choose a file">
+    Select a `.yaml` or `.yml` file from your file system. Ladder Graph accepts any LGIR YAML file — including files exported from another Ladder Graph instance or authored by hand.
+  </Step>
+  <Step title="Review and open">
+    Ladder Graph validates the file and, if it passes, opens it as a new project. The project appears in your project list immediately and is saved to your browser storage. If the file fails validation, Ladder Graph displays the diagnostics so you can correct the YAML before retrying.
+  </Step>
+</Steps>
+
+## Import Validation
+
+Every imported file goes through the same security and semantic checks applied to any YAML edit in the studio. Ladder Graph rejects files that do not meet these requirements:
+
+| Check | Limit or action |
+|---|---|
+| Maximum file size | 2 MB |
+| Maximum nodes | 1,000 |
+| Custom YAML tags | Rejected |
+| YAML anchors and aliases | Rejected |
+| External references | Rejected |
+| Arbitrary cycles | Error |
+| Duplicate node or edge IDs | Error |
+| Missing edge endpoints | Error |
+
+Files that exceed size or node limits are rejected before parsing. Files that contain prohibited YAML features (custom tags, anchors, aliases, external references) are rejected at the parse stage, before any content reaches the compiler.
+
+## YAML Format
+
+Exported files are valid LGIR YAML. Every file opens with the standard document header:
+
+```yaml
+apiVersion: ladder.dev/v1alpha1
+kind: Workflow
+metadata:
+  name: my-workflow-slug
+spec:
+  objective: A verifiable outcome.
+  nodes: []
+  edges: []
+```
+
+The `apiVersion` field identifies the LGIR schema version. You can open exported files in any text editor, diff them with `git diff`, and commit them to version control alongside your agent harness code. The format is stable across Ladder Graph instances.
+
+## Sharing Workflows
+
+Because exported files are self-contained plain YAML, you can share them through any file transfer method:
+
+- **Email or chat** — attach the `.yaml` file directly
+- **GitHub or GitLab** — commit the file to a repository; colleagues clone or download it and import it
+- **Gist or Pastebin** — paste the YAML content; recipients save it as a `.yaml` file and import it
+- **Cloud storage** — share a link to the file in Dropbox, Drive, or similar
+
+Recipients import the file using the Import function described above. No Ladder Graph account or shared workspace is required.
+
+## Revision Export
+
+The revision history panel lets you export any individual saved revision, not just the current state of a project. This is useful when you want to recover an earlier version of a workflow without discarding your current work.
+
+To export a revision:
+
+<Steps>
+  <Step title="Open the revision history panel">
+    Click **Revisions** in the bottom toolbar or the project menu to open the revision history panel for the current project.
+  </Step>
+  <Step title="Select a revision">
+    Browse the list of saved revisions. Each entry shows a timestamp and whether the revision was valid at the time it was saved.
+  </Step>
+  <Step title="Export the revision">
+    Click the **Export** icon next to the revision you want. Ladder Graph downloads that revision's YAML as a file, leaving your current project untouched.
+  </Step>
+</Steps>
+
+<Tip>
+Keep your LGIR YAML files in version control alongside your agent harness code. A commit per milestone gives you a full history of your workflow's evolution, makes it easy to review changes in pull requests, and ensures you have a recovery path if browser storage is ever cleared.
+</Tip>
+
+<Note>
+Exported YAML files are fully portable. They can be imported into any Ladder Graph instance — the hosted PWA, a locally-run development build, or a fork. No project metadata or browser-specific state is embedded in the file; only the canonical LGIR document is exported.
+</Note>

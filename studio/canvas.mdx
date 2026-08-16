@@ -1,0 +1,101 @@
+---
+title: "Working with the Canvas in Ladder Graph Studio"
+sidebarTitle: "Canvas"
+description: "Navigate the grid canvas to add nodes, draw edges, use the minimap, zoom, and switch between Canvas, Split, and YAML editing modes."
+---
+
+The canvas is the primary visual surface of Ladder Graph Studio. It renders your workflow as an interactive, color-coded graph on a dot-grid background, where each node represents a step in your agent workflow and each edge represents a typed contract between steps. Every action you take on the canvas — adding a node, drawing an edge, repositioning an element — is immediately reflected in the LGIR YAML document that powers your workflow.
+
+## Canvas Modes
+
+Ladder Graph Studio offers three editing modes. You can switch between them using the mode selector in the studio header.
+
+<Tabs>
+  <Tab title="Canvas">
+    **Canvas mode** fills the center workspace entirely with the interactive graph. This is the best mode for visual layout work, exploring topology, and building workflows from scratch. The YAML editor is hidden but the document continues to update in the background as you make changes.
+  </Tab>
+  <Tab title="Split">
+    **Split mode** places the canvas on the left and the YAML editor on the right, side by side. Use this mode when you want to watch LGIR update in real time as you drag nodes or edit properties, or when you want to make a targeted YAML edit and immediately see its effect on the graph.
+  </Tab>
+  <Tab title="YAML">
+    **YAML mode** hides the canvas entirely and shows the YAML editor full-screen. Use this mode when you are writing or reviewing LGIR directly and do not need the visual graph in view.
+  </Tab>
+</Tabs>
+
+## Navigation
+
+The canvas uses React Flow for rendering. Standard pan and zoom gestures apply.
+
+| Action | How to do it |
+|---|---|
+| Pan | Click and drag on the empty grid background |
+| Zoom in / out | Scroll wheel, or pinch on a trackpad |
+| Fit all nodes in view | Click the **Fit** button in the bottom-left controls |
+| Reset zoom to 100% | Click the **1:1** button in the bottom-left controls |
+| Pan the minimap | Click and drag inside the minimap (bottom-right corner) |
+| Zoom the minimap | Scroll inside the minimap |
+
+The **minimap** in the bottom-right corner shows a scaled overview of your entire graph. Each node is colored according to its kind — for example, agent nodes appear in red and join nodes in green — so you can orient yourself quickly in large workflows.
+
+The minimum zoom level is **0.25×** and the maximum is **1.7×**. When you add new nodes, the canvas automatically fits them into view with a short animation.
+
+## Adding Nodes
+
+<Steps>
+  <Step title="Drag from the palette">
+    Open the palette in the left sidebar. Find the node kind you want, then click its button. The node appears on the canvas at a new position, pre-configured with sensible defaults.
+  </Step>
+  <Step title="Use the right-click context menu">
+    Right-click anywhere on the empty canvas background to open the context menu. Select a node kind to insert it at the exact position where you clicked.
+  </Step>
+</Steps>
+
+Every new node is assigned a stable, auto-generated ID (for example, `agent-3`) that you can see in the inspector's **Advanced** tab. Nodes are immediately written into the LGIR YAML.
+
+## Connecting Nodes
+
+To draw an edge between two nodes:
+
+<Steps>
+  <Step title="Hover over the source node">
+    Move your cursor to the node that should send data or a control signal. A circular **output handle** appears on the right side of the node.
+  </Step>
+  <Step title="Drag from the output handle">
+    Click and drag from the output handle toward the target node.
+  </Step>
+  <Step title="Release on the input handle">
+    Drop onto the circular **input handle** on the left side of the target node. The edge is created and added to the LGIR `edges` list with kind `dependency` by default.
+  </Step>
+</Steps>
+
+Edges are rendered as smooth curves. **Data edges** appear in cyan, **control edges** in pink, and **dependency edges** in a neutral gray. Edge labels display the contract or condition when one is set.
+
+## Selecting and Moving
+
+- **Click** any node to select it. The node gains a selection ring and the inspector panel opens with that node's properties.
+- **Click the empty background** to deselect the current node.
+- **Shift-click** additional nodes to build a multi-selection.
+- **Drag** a selected node to reposition it. The canvas writes the new `position` coordinates to LGIR when you release the drag.
+
+When you move a **group node**, all of its member nodes move together, preserving their relative positions inside the group boundary.
+
+## Deleting Elements
+
+<Steps>
+  <Step title="Select the element">
+    Click the node or edge you want to remove.
+  </Step>
+  <Step title="Press Delete or Backspace">
+    The element is removed from the canvas and patched out of the LGIR YAML immediately. This action can be undone with **⌘Z** / **Ctrl Z**.
+  </Step>
+</Steps>
+
+## Canvas vs. YAML: Source of Truth
+
+The LGIR YAML document is always the canonical source of truth. Every canvas action — adding a node, drawing an edge, moving a node — is implemented as a **CST patch** applied directly to the YAML text. The canvas reads from the compiled, normalized representation that the Rust/WASM compiler produces from that YAML on every change.
+
+This means you can freely switch between visual editing and direct YAML editing at any time. Your work is never lost when you switch modes, and neither representation can get out of sync with the other.
+
+<Note>
+  When the YAML contains a syntax error, the canvas enters a **read-only paused state**. A banner reading "Canvas paused — Fix the YAML syntax to resume visual editing" overlays the graph. You can still see the last valid graph, but dragging, connecting, and deleting are disabled until the YAML is valid again. The YAML editor remains fully functional so you can correct the error directly.
+</Note>

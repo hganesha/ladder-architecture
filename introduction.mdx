@@ -1,0 +1,71 @@
+---
+title: "Ladder Graph: Design and Compile Agent Workflows"
+sidebarTitle: "Introduction"
+description: "Ladder Graph is an offline-first visual compiler for agent workflows. Design on a canvas, validate with a Rust engine, and compile to Codex, Claude, Hermes, Python, or TypeScript."
+---
+
+Ladder Graph is an open-source, offline-first visual compiler for designing, validating, and compiling deterministic agent workflows. You sketch a workflow on a canvas—or write it directly in YAML—and the built-in Rust/WASM engine validates your graph, then compiles it into a single self-contained artifact you can drop into your agent harness. Ladder Graph is a **compiler**, not a runtime: it never calls a model provider, executes a shell command, or stores credentials. There are no accounts to create, no telemetry, and no internet connection required after the first page load.
+
+## What You Can Build
+
+Ladder Graph gives you a synchronized visual and YAML environment for authoring deterministic multi-agent workflows. You place nodes on a grid canvas, connect them with typed edges, and the underlying LGIR YAML document stays in sync with every change you make.
+
+The studio ships with **16 outcome-led starter templates** spanning software engineering, security, research, product management, product design, go-to-market, multimodal production, and coordinated building design. Each template captures a complete, runnable workflow topology—like draft→critique→revise or parallel implementation and risk review—so you can study a working example and customize it to your specific use case without starting from scratch.
+
+Beyond the canvas, you also get:
+
+- A **YAML editor** with real-time patching synchronized to the canvas, so you can work in either view or split them side by side.
+- A **searchable palette** of 11 canonical node kinds organized by category.
+- An **inspector** for editing every node's name, role, prompt, skills, connectors, output schema, and configuration.
+- A **compiler drawer** with live validation diagnostics and one-click compilation to your chosen target.
+- **68 editable role templates** covering core, software, security, and architecture/design specialists.
+
+## Compiler Targets
+
+Once your workflow passes validation, you compile it to one of five targets. Each target produces a single self-contained artifact suited to a specific agent harness or integration style.
+
+| Target | Output File | Output Type | Use Case |
+|---|---|---|---|
+| `codex` | `AGENTS.md` / `.agents/skills/` | Markdown skill file | OpenAI Codex / coding agents that read AGENTS.md |
+| `claude` | `SKILL.md` / `.claude/skills/` | Markdown skill file | Claude projects and Claude Code skill files |
+| `hermes` | `~/.hermes/skills/.../SKILL.md` | Markdown skill file | Hermes Agent skill with `metadata.hermes` fields |
+| `python` | `<workflow>.ladder.py` | Importable Python module | Host applications that bind and execute nodes in Python |
+| `typescript` | `<workflow>.ladder.ts` | Typed TypeScript module | Host applications that bind and execute nodes in TypeScript |
+
+## How It Works
+
+<Steps>
+  <Step title="Design">
+    Open the studio in your browser—no install required. Choose one of the 16 starter templates or start with a blank canvas. Place nodes from the palette, connect them with edges, and fill in roles and prompts in the inspector. Every change you make patches the underlying LGIR YAML document in real time.
+  </Step>
+  <Step title="Validate">
+    Open the compiler drawer and click **Validate**. The Rust/WASM engine parses your LGIR YAML, checks node IDs, edge contracts, control-flow topology, loop bounds, group membership, and capability support for your chosen target. Errors block compilation; warnings and info messages do not. Each diagnostic includes a stable code, a source path, and a suggested repair where one is available.
+  </Step>
+  <Step title="Compile">
+    Select a target—codex, claude, hermes, python, or typescript—then click **Compile**. The compiler runs the full pipeline: parse → validate → topological sort → source hash → capability analysis → target adapter → artifact. The result is one self-contained file with a stable source hash, compiler version, adapter version, and a capability report showing which features are native, instructional, or unsupported for that target.
+  </Step>
+  <Step title="Use the Artifact">
+    Copy the artifact to your clipboard or download the file. Drop Markdown artifacts into your agent's skill directory; import code artifacts as modules in your host application. The compiled output is reproducible from the same LGIR YAML—no hidden studio state is required to regenerate it.
+  </Step>
+</Steps>
+
+## Key Principles
+
+<CardGroup cols={2}>
+  <Card title="Offline First" icon="wifi-slash">
+    The studio is a Progressive Web App. After the first load it works entirely offline. All workflow data is stored locally in IndexedDB and OPFS—nothing is sent to any server.
+  </Card>
+  <Card title="Deterministic" icon="lock">
+    The same LGIR YAML always compiles to the same artifact. Stable topological ordering, source hashes, and a committed WebAssembly module mean your compiled output is reproducible and auditable.
+  </Card>
+  <Card title="No Runtime" icon="circle-stop">
+    Ladder Graph compiles workflows; it does not execute them. It never invokes a model, runs a tool, calls an MCP server, or evaluates node expressions. Your agent harness is responsible for binding and running the compiled artifact.
+  </Card>
+  <Card title="No Telemetry" icon="eye-slash">
+    There are no accounts, no analytics, and no usage tracking of any kind. With telemetry excluded, adoption is assessed through moderated studies, repository activity, and opt-in feedback only.
+  </Card>
+</CardGroup>
+
+<Note>
+  Ladder Graph never contacts model providers or executes agents of any kind. Catalog entries for skills, connectors, and OpenRouter profiles are authoring suggestions—not an inventory of installed capabilities. Credentials must never be stored in LGIR YAML, and compiled artifacts must be verified against current provider documentation before use in production.
+</Note>

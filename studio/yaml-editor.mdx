@@ -1,0 +1,108 @@
+---
+title: "Editing LGIR YAML Directly in the Studio"
+sidebarTitle: "YAML Editor"
+description: "Use the built-in CodeMirror YAML editor to author or fine-tune your LGIR workflow document. Changes sync live to the canvas."
+---
+
+The YAML editor gives you direct, text-level access to the LGIR document that drives your workflow. Every Ladder Graph workflow is stored as a YAML file conforming to the `ladder.dev/v1alpha1` schema. While the canvas and inspector let you work visually, the YAML editor is always available for fine-grained authoring, bulk edits, copy-paste from external sources, or situations where you want precise control over field order and values.
+
+## Accessing the Editor
+
+You can reach the YAML editor in two ways:
+
+- **Split mode** — Opens the canvas on the left and the YAML editor on the right, side by side. Use this when you want to watch the graph update as you type.
+- **YAML mode** — Hides the canvas and shows the editor full-screen. Use this for focused text editing or when working on large documents.
+
+Switch between modes using the mode selector in the studio header. The editor is also always visible as the right panel whenever Split mode is active.
+
+## Syntax Highlighting and Validation
+
+The editor is powered by **CodeMirror 6** with the `@codemirror/lang-yaml` extension. It provides:
+
+- YAML syntax highlighting with token-level coloring
+- Active-line and selection highlighting
+- Bracket matching and auto-close
+- Fold gutters for collapsing nested sections
+- Line wrapping for long values
+
+The Rust/WASM compiler validates the document on **every keystroke**. Diagnostics (errors and warnings) appear in the **Diagnostics** drawer, which you can open from the studio footer. Each diagnostic carries a stable code, a source path, a severity level, and a safe repair suggestion where one is available.
+
+## LGIR as the Source of Truth
+
+LGIR YAML is canonical. Every canvas action — adding a node, drawing an edge, repositioning an element — is implemented as a **CST (Concrete Syntax Tree) patch** applied to the live YAML text. You never lose hand-written formatting or comments when you interact with the canvas.
+
+Conversely, every edit you make in the YAML editor is immediately parsed by the compiler, and the canvas re-renders from the normalized result. The two views are always in sync.
+
+## Auto-Save Behavior
+
+Ladder Graph saves your work to **IndexedDB** in the browser automatically:
+
+- **Valid YAML** is persisted to the project record after every successful compile. The status bar at the bottom of the studio shows the last save time.
+- **Invalid YAML** (syntax errors or schema violations) is kept in a separate in-memory draft. Your last valid document is preserved in storage until you fix the errors and a new valid document is produced.
+
+You never lose a valid document by making an invalid edit. The status bar shows **"Local draft"** when unsaved changes are present and **"Saved locally HH:MM"** once the latest valid document is persisted.
+
+## Format Button
+
+Click the **Format** button in the compiler drawer (bottom of the studio) to reformat the entire YAML document with canonical indentation — two-space offsets, normalized key order within each mapping, and consistent list formatting. Formatting is non-destructive: it preserves all field values and never removes valid content.
+
+## Schema Validation
+
+Ladder Graph validates your YAML against two layers:
+
+1. **JSON Schema** — The portable authoring contract at `public/schema/lgir-v1alpha1.schema.json`. This schema is checked in the browser by the compiler worker and covers required fields, allowed node kinds, enum values, and basic structural rules.
+2. **Rust compiler** — The full semantic authority. The Rust/WASM module enforces constraints that JSON Schema cannot express, such as cycle detection, edge endpoint resolution, loop bound requirements, group membership consistency, and capability contract rules.
+
+You can reference the JSON Schema file directly in editors that support JSON Schema validation (for example, VS Code with the YAML extension) to get inline completions and error markers outside of Ladder Graph.
+
+## Minimal Valid Workflow
+
+The smallest valid LGIR document you can compile looks like this:
+
+```yaml
+apiVersion: ladder.dev/v1alpha1
+kind: Workflow
+metadata:
+  name: my-workflow
+spec:
+  objective: A verifiable outcome statement.
+  nodes:
+    - id: input-0
+      kind: input
+      name: Input
+      summary: Workflow objective and typed inputs
+    - id: agent-1
+      kind: agent
+      name: Agent
+      summary: One focused role and prompt
+      role: Workflow specialist
+      prompt: Complete this focused task and return only the requested output.
+      outputSchema:
+        type: object
+    - id: output-2
+      kind: output
+      name: Output
+      summary: Final completion contract
+  edges:
+    - id: edge-0
+      from: input-0
+      to: agent-1
+      kind: dependency
+    - id: edge-1
+      from: agent-1
+      to: output-2
+      kind: dependency
+```
+
+You can paste this directly into the editor to start a new workflow from scratch, then add nodes and edges visually or by hand.
+
+<Warning>
+  The following constructs are **rejected** by the Ladder Graph parser and will produce an immediate error:
+
+  - **Custom YAML tags** (e.g., `!!python/object`) — only standard YAML scalar, sequence, and mapping types are allowed.
+  - **Anchors and aliases** (e.g., `&anchor` / `*alias`) — every node and value must be written inline.
+  - **External references** — the `$ref` field and any URI-based references that point outside the document are not supported.
+  - **Documents over 2 MB** — imports and pastes are capped at 2 MB. Documents with more than 1,000 nodes enter a view-only mode.
+
+  None of these constructs are silently dropped. The compiler surfaces an explicit error with a stable code so you know exactly what to fix.
+</Warning>
