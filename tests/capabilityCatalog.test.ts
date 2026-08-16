@@ -11,7 +11,7 @@ describe("target capability catalogs", () => {
       connector.id.startsWith("api:openrouter/"),
     );
 
-    expect(researchedRoles).toHaveLength(60);
+    expect(researchedRoles).toHaveLength(85);
     expect(new Set(roleIds).size).toBe(roleIds.length);
     expect(openRouterProfiles).toHaveLength(15);
     expect(new Set(openRouterProfiles.map((connector) => connector.id)).size).toBe(openRouterProfiles.length);
@@ -84,5 +84,34 @@ describe("target capability catalogs", () => {
     expect(media.connectors.has("api:openrouter/google/veo-3.1-fast")).toBe(true);
     expect(building.skills.has("building-design")).toBe(true);
     expect(building.connectors.has("mcp:bim")).toBe(true);
+  });
+
+  it("recommends humanities, writing, and personal-development capabilities", () => {
+    const historian = recommendedCapabilities("codex", {
+      id: "archive",
+      kind: "agent",
+      name: "Historical primary source analyst",
+      prompt: "Review archival evidence and its historiography.",
+    });
+    const editor = recommendedCapabilities("codex", {
+      id: "editor",
+      kind: "agent",
+      name: "Developmental manuscript editor",
+      prompt: "Review the writing structure before prose polish.",
+    });
+    const coach = recommendedCapabilities("codex", {
+      id: "habit",
+      kind: "agent",
+      name: "Habit and goal coach",
+      prompt: "Build a sustainable behavior and weekly reflection plan.",
+    });
+
+    expect(historian.skills.has("historical-research")).toBe(true);
+    expect(historian.skills.has("source-criticism")).toBe(true);
+    expect(historian.connectors.has("mcp:archives")).toBe(true);
+    expect(editor.skills.has("developmental-editing")).toBe(true);
+    expect(editor.connectors.has("mcp:document-editor")).toBe(true);
+    expect(coach.skills.has("behavior-change")).toBe(true);
+    expect(coach.connectors.has("mcp:calendar")).toBe(true);
   });
 });

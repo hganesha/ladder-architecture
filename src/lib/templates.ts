@@ -2084,6 +2084,129 @@ const threatModel = parallelReview({
   outputSummary: "Threats, severity, mitigations, verification, ownership, and residual risk.",
 });
 
+const humanitiesInquiry = parallelReview({
+  name: "humanities-inquiry-seminar",
+  title: "Humanities inquiry + seminar",
+  description: "Read primary material closely, establish its historical frame, then test the interpretation through Socratic synthesis.",
+  objective: "Produce a text-grounded, historically responsible interpretation and an open-ended seminar guide.",
+  inputName: "Inquiry packet",
+  inputSummary: "Shared question, primary texts, historical scope, audience, and citation standard.",
+  first: {
+    name: "Close reading",
+    summary: "Find the passages and formal choices that bear on the question.",
+    role: "Great Books close-reading tutor",
+    prompt:
+      "Build the interpretation from specific passages, language, and structure. Preserve competing readings and identify textual evidence that complicates the initial thesis.",
+    skill: "close-reading",
+  },
+  second: {
+    name: "Historical context",
+    summary: "Test provenance, period context, and later framing.",
+    role: "Historical research analyst",
+    prompt:
+      "Distinguish primary and secondary evidence, evaluate provenance and bias, guard against anachronism, and mark claims the historical record cannot settle.",
+    skill: "historical-research",
+  },
+  synthesis: {
+    name: "Socratic synthesis",
+    summary: "Reconcile evidence into a defensible interpretation and discussion arc.",
+    role: "Interdisciplinary seminar facilitator",
+    prompt:
+      "Synthesize without flattening disagreement. State the strongest interpretation, its limits, and a sequence of genuinely open questions grounded in the supplied texts.",
+    skill: "seminar-facilitation",
+  },
+  evaluation: {
+    name: "Humanities evidence gate",
+    role: "Historiography and argument critic",
+    prompt:
+      "Pass only when interpretive claims cite textual evidence, historical claims distinguish source types, counter-readings are represented charitably, and uncertainty is explicit.",
+  },
+  outputName: "Inquiry and seminar guide",
+  outputSummary: "Interpretive thesis, textual evidence, historical context, counter-readings, citations, and discussion questions.",
+});
+
+const writingStudio = parallelReview({
+  name: "manuscript-development-studio",
+  title: "Manuscript development + editorial gate",
+  description: "Review structure and reader experience independently before producing a voice-preserving revision plan.",
+  objective: "Produce a staged editorial plan that fixes the manuscript's largest problems before line polish.",
+  inputName: "Manuscript brief",
+  inputSummary: "Draft, genre, intended reader, writer's goals, constraints, and requested editorial depth.",
+  first: {
+    name: "Structural edit",
+    summary: "Assess thesis or arc, organization, pacing, and point of view.",
+    role: "Developmental editor",
+    prompt:
+      "Diagnose manuscript-level problems and propose concrete restructuring options. Defer sentence polish until the argument or narrative shape is sound.",
+    skill: "developmental-editing",
+  },
+  second: {
+    name: "Reader and voice review",
+    summary: "Test clarity, audience fit, voice consistency, and disclosure boundaries.",
+    role: "Voice-preserving writing coach",
+    prompt:
+      "Identify where the draft loses its intended reader or departs from its established voice. Preserve intentional style and distinguish reader-facing craft from private processing.",
+    skill: "voice-preservation",
+  },
+  synthesis: {
+    name: "Editorial letter",
+    summary: "Prioritize revisions and supply representative examples.",
+    role: "Senior manuscript editor",
+    prompt:
+      "Write an actionable editorial letter with preserved strengths, priority order, structural moves, representative examples, and a separate later line-edit pass.",
+    skill: "developmental-editing",
+  },
+  evaluation: {
+    name: "Editorial integrity gate",
+    role: "Independent editorial reviewer",
+    prompt:
+      "Pass only when recommendations serve the writer's stated goal, trace to manuscript evidence, preserve voice, and separate structural revision from line editing.",
+  },
+  outputName: "Staged revision plan",
+  outputSummary: "Editorial letter, structural map, priority revisions, examples, and later line-edit checklist.",
+});
+
+const valuesToAction = parallelReview({
+  name: "values-to-action-system",
+  title: "Values → sustainable action system",
+  description: "Align direction and behavior design independently, then build a small maintainable system with a review cadence.",
+  objective: "Turn a personally meaningful direction into a realistic, revisable action system.",
+  inputName: "Life or work objective",
+  inputSummary: "Current situation, desired change, stated values, commitments, constraints, and available support.",
+  first: {
+    name: "Values and direction",
+    summary: "Test whether the objective reflects the user's own values and circumstances.",
+    role: "Values-based goal strategist",
+    prompt:
+      "Clarify the underlying value, competing commitments, and evidence that the objective is genuinely the user's own. Define a concrete outcome without replacing their judgment.",
+    skill: "values-based-goals",
+  },
+  second: {
+    name: "Behavior and friction",
+    summary: "Design cues, small actions, environment, and recovery from misses.",
+    role: "Habit formation and behavior-change coach",
+    prompt:
+      "Choose a repeatable minimum action, cue, immediate satisfaction signal, environmental changes, and a restart rule. Diagnose constraints rather than relying on willpower.",
+    skill: "behavior-change",
+  },
+  synthesis: {
+    name: "Sustainable system",
+    summary: "Combine direction, actions, scheduling, and review into one lightweight plan.",
+    role: "Productivity systems coach",
+    prompt:
+      "Create a minimal system of milestones, next actions, time or context cues, a weekly review, and explicit defer, delegate, or drop decisions.",
+    skill: "productivity-systems",
+  },
+  evaluation: {
+    name: "Alignment and safety gate",
+    role: "Reflective practice reviewer",
+    prompt:
+      "Pass only when the plan reflects the user's stated values, fits real constraints, avoids clinical claims, defines a small next action, and includes a humane review and adjustment rule.",
+  },
+  outputName: "Values-aligned action plan",
+  outputSummary: "Direction, milestones, habit design, environment changes, review cadence, and adjustment rules.",
+});
+
 export const WORKFLOW_TEMPLATES: TemplateDefinition[] = [
   {
     id: "refinement",
@@ -2260,6 +2383,39 @@ export const WORKFLOW_TEMPLATES: TemplateDefinition[] = [
     topology: "Discipline fan-out + issue gate",
     accent: "#de9f54",
     yaml: toYaml(coordinatedBuildingDesign),
+  },
+  {
+    id: "humanities-inquiry",
+    path: "research/humanities/inquiry",
+    area: "Humanities",
+    title: "Humanities inquiry + seminar",
+    eyebrow: "Text + context",
+    description: "Read primary material closely, establish its historical frame, and gate a Socratic seminar guide against evidence.",
+    topology: "Dual inquiry + evidence gate",
+    accent: "#8e79c6",
+    yaml: toYaml(humanitiesInquiry),
+  },
+  {
+    id: "writing-studio",
+    path: "research/writing/editorial",
+    area: "Writing",
+    title: "Manuscript development + editorial gate",
+    eyebrow: "Voice-preserving edit",
+    description: "Separate structural and reader reviews before creating a staged revision plan that preserves the writer's voice.",
+    topology: "Dual review + editorial gate",
+    accent: "#ce728d",
+    yaml: toYaml(writingStudio),
+  },
+  {
+    id: "values-to-action",
+    path: "research/personal-development/goals",
+    area: "Personal development",
+    title: "Values → sustainable action system",
+    eyebrow: "Direction to practice",
+    description: "Reconcile values and behavior design into a small, realistic action system with humane review and adjustment.",
+    topology: "Alignment join + safety gate",
+    accent: "#68a56f",
+    yaml: toYaml(valuesToAction),
   },
 ];
 

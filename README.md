@@ -34,7 +34,7 @@ The Rust-generated files in `src/wasm/pkg` are intentionally committed so static
 
 ## What the MVP includes
 
-- Sixteen outcome-led starter workflows and 68 editable role templates, including researched software, security, and architecture/design specialists.
+- Nineteen outcome-led starter workflows and 93 editable role templates, including researched software, security, architecture/design, humanities, writing, and personal-development specialists.
 - Eleven canonical node kinds, three edge kinds, and four visual macros.
 - DAG validation, structured bounded loops, bounded execution groups with aggregate or serialized exits, safe declarative transforms, target capability reporting, and stable diagnostics.
 - One self-contained Markdown artifact for Codex, Claude, or Hermes Agent, or an importable deterministic data module for Python or TypeScript.

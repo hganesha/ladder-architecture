@@ -14,11 +14,14 @@ describe("agent template palette", () => {
   it("surfaces the expanded role count and researched specialists", () => {
     render(<Palette />);
 
-    expect(ROLE_TEMPLATES).toHaveLength(68);
-    expect(screen.getByText("68 agents")).toBeInTheDocument();
+    expect(ROLE_TEMPLATES).toHaveLength(93);
+    expect(screen.getByText("93 agents")).toBeInTheDocument();
     expect(screen.getByText("Requirements Analyst")).toBeInTheDocument();
     expect(screen.getByText("Penetration Tester / Red Team Operator")).toBeInTheDocument();
     expect(screen.getByText("Building Architect / Design Architect")).toBeInTheDocument();
+    expect(screen.getByText("Socratic Dialogue Partner")).toBeInTheDocument();
+    expect(screen.getByText("Developmental Editor")).toBeInTheDocument();
+    expect(screen.getByText("Life Coach / Values-Based Goal Strategist")).toBeInTheDocument();
   });
 
   it("finds a researched role through the visible library search", () => {

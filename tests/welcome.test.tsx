@@ -24,8 +24,8 @@ describe("welcome gallery", () => {
     useStudioStore.setState({ openTemplate });
     render(<Welcome onBlank={() => undefined} />);
     expect(screen.getByRole("heading", { name: "Starter workflows" })).toBeInTheDocument();
-    expect(screen.getByText(`${WORKFLOW_TEMPLATES.length} workflows across 9 areas`, { exact: false })).toBeInTheDocument();
-    expect(screen.getAllByRole("tab")).toHaveLength(9);
+    expect(screen.getByText(`${WORKFLOW_TEMPLATES.length} workflows across 12 areas`, { exact: false })).toBeInTheDocument();
+    expect(screen.getAllByRole("tab")).toHaveLength(12);
     expect(screen.getByRole("tab", { name: "Core patterns" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getAllByRole("button", { name: /open .* in studio/i })).toHaveLength(1);
     fireEvent.click(screen.getByRole("tab", { name: "Software engineering" }));
@@ -50,6 +50,19 @@ describe("welcome gallery", () => {
 
     fireEvent.click(screen.getByRole("tab", { name: "Architecture & design" }));
     expect(screen.getByRole("button", { name: /open coordinated building design in studio/i })).toBeInTheDocument();
+  });
+
+  it("exposes humanities, writing, and personal-development workflows", () => {
+    render(<Welcome onBlank={() => undefined} />);
+
+    fireEvent.click(screen.getByRole("tab", { name: "Humanities" }));
+    expect(screen.getByRole("button", { name: /open humanities inquiry \+ seminar in studio/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Writing" }));
+    expect(screen.getByRole("button", { name: /open manuscript development \+ editorial gate in studio/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Personal development" }));
+    expect(screen.getByRole("button", { name: /open values → sustainable action system in studio/i })).toBeInTheDocument();
   });
 
   it("switches themes and remembers the choice", () => {

@@ -1,4 +1,18 @@
-import { ArrowRight, Beaker, Boxes, Building2, Code2, Images, Megaphone, PenTool, ShieldCheck, Sparkles } from "lucide-react";
+import {
+  ArrowRight,
+  Beaker,
+  BookOpen,
+  Boxes,
+  Building2,
+  Code2,
+  Feather,
+  Images,
+  Megaphone,
+  PenTool,
+  ShieldCheck,
+  Sparkles,
+  Target,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { listProjects } from "../lib/persistence";
 import { WORKFLOW_TEMPLATES } from "../lib/templates";
@@ -24,6 +38,21 @@ const WORKFLOW_AREAS = [
     name: "Architecture & design",
     description: "Building design, engineering, interiors, compliance, performance, cost, and coordinated delivery.",
     icon: Building2,
+  },
+  {
+    name: "Humanities",
+    description: "Philosophy, history, close reading, source criticism, rhetoric, and interdisciplinary inquiry.",
+    icon: BookOpen,
+  },
+  {
+    name: "Writing",
+    description: "Developmental editing, prose, creative practice, memoir, academic argument, and voice preservation.",
+    icon: Feather,
+  },
+  {
+    name: "Personal development",
+    description: "Values-aligned goals, behavior design, productivity systems, career discernment, and reflection.",
+    icon: Target,
   },
 ] as const;
 
