@@ -1,7 +1,7 @@
 ---
-title: "Compiler API: analyze, compile, format, migrate"
+title: "Compiler API: analyze, compile, format, and migrate"
 sidebarTitle: "Compiler API"
-description: "The Ladder Graph compiler exposes four operations via a Web Worker client: analyze, compile, format, and migrate. All are asynchronous and return typed result objects."
+description: "Analyze, compile, format, or migrate LGIR workflows using the compiler singleton. All four operations run in a Web Worker and return typed Promise results."
 ---
 
 The Ladder Graph compiler runs in a dedicated Web Worker and communicates with the main thread via message passing. You never instantiate the worker yourself — you import the singleton `compiler` client, which provides a fully Promise-based API. Every method posts a message to the worker, waits for the matching response, and resolves or rejects the returned Promise.
@@ -33,9 +33,9 @@ console.log(compiler.runtime); // "wasm" or "fallback"
 
 ## Operations
 
-### `analyze(yaml, target?)`
+### `analyze(source, target?)`
 
-**Signature:** `analyze(yaml: string, target?: Target): Promise<AnalysisResult>`
+**Signature:** `analyze(source: string, target?: Target): Promise<AnalysisResult>`
 
 Runs validation without compilation. Use `analyze` to check diagnostics and receive a capability report before committing to a target. Passing `target` adds target-aware capability diagnostics (codes `LG200` and `LG201`) to the result; omit it for a pure structural check.
 
@@ -52,9 +52,9 @@ See [AnalysisResult](/lgir/analysis-result) for the complete field reference.
 
 ---
 
-### `compile(yaml, target)`
+### `compile(source, target)`
 
-**Signature:** `compile(yaml: string, target: Target): Promise<CompileResult>`
+**Signature:** `compile(source: string, target: Target): Promise<CompileResult>`
 
 Validates and compiles the workflow to the specified target. Compilation is blocked when any error-severity diagnostic exists — `result.ok` will be `false` and `result.content` will be empty. On success, the result includes the full artifact text, a suggested filename, the MIME type, a SHA-256 source hash, compiler and adapter version strings, and a per-target capability report.
 
@@ -70,9 +70,9 @@ See [CompileResult](/lgir/compile-result) for the complete field reference.
 
 ---
 
-### `format(yaml)`
+### `format(source)`
 
-**Signature:** `format(yaml: string): Promise<FormatResult>`
+**Signature:** `format(source: string): Promise<FormatResult>`
 
 Normalizes the YAML document with canonical indentation and field ordering. Use `format` to clean up hand-edited YAML before committing it or sharing it with teammates. The returned `content` is the reformatted YAML string; `ok` is `false` if the document could not be parsed at all.
 
@@ -85,14 +85,14 @@ if (result.ok) {
 
 ---
 
-### `migrate(yaml, toVersion)`
+### `migrate(source, toVersion)`
 
-**Signature:** `migrate(yaml: string, toVersion: string): Promise<MigrationResult>`
+**Signature:** `migrate(source: string, toVersion: string): Promise<FormatResult>`
 
-Upgrades a workflow document from an older LGIR version to `toVersion`. The compiler rewrites `apiVersion` and re-serializes the document through the current Rust schema. Currently the only valid target version is `"ladder.dev/v1alpha1"`. Passing any other value returns `ok: false` with diagnostic code `LG400`.
+Upgrades a workflow document from an older LGIR version to `toVersion`. The compiler rewrites `apiVersion` and re-serializes the document through the current Rust schema. Currently the only valid target version is `"ladder.dev/v1alpha1"`. Passing any other value returns `ok: false` with diagnostic code `LG400`. The return type is `FormatResult` — the same shape as `format()` — containing `ok`, `content`, and `diagnostics`.
 
 ```typescript
-const result = await compiler.migrate(yaml, "ladder.dev/v1alpha1");
+const result = await compiler.migrate(source, "ladder.dev/v1alpha1");
 if (result.ok) {
   console.log(result.content); // migrated YAML
 }

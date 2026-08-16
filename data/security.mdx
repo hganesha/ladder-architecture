@@ -1,7 +1,7 @@
 ---
-title: "Security Model and Input Safety in Ladder Graph"
+title: "Ladder Graph Security: Import Limits and Input Safety"
 sidebarTitle: "Security"
-description: "Ladder Graph treats imported YAML as data, never code. Strict limits on imports, YAML features, and generated output prevent injection, execution, and credential exposure."
+description: "Ladder Graph treats imported YAML as data, never code. Import limits, YAML restrictions, and text-only artifacts prevent injection and credential exposure."
 ---
 
 Ladder Graph is a compiler, not a runtime. It parses YAML you supply, validates it against the LGIR schema, and generates a self-contained Markdown or source-code artifact — nothing more. Understanding where the security boundary sits helps you use Ladder Graph safely and explains why certain YAML features are deliberately rejected. This page describes the threat model, import limits, output guarantees, credential policy, and browser security posture.
@@ -42,7 +42,7 @@ Ladder Graph enforces strict limits on every file you import. These limits apply
 
 Custom YAML tags, anchors, and aliases are rejected at the parse stage before any content reaches the compiler. This prevents parser denial-of-service (e.g., billion-laughs via alias expansion) and eliminates a class of injection vectors that exploit YAML's more permissive features. External references are rejected for the same reason — Ladder Graph never fetches remote content.
 
-The 2 MB and 1,000-node caps protect the browser's UI thread and Web Worker. Workflows approaching the node limit are view-only; the 200-node CI baseline is the interactive performance target.
+The 2 MB and 1,000-node caps protect the browser's UI thread and Web Worker. Workflows at the node limit are accepted for viewing but will not be interactive.
 
 ## Generated Artifacts
 

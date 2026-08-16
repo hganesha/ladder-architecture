@@ -1,7 +1,7 @@
 ---
 title: "AnalysisResult: Validation Output from the Compiler"
 sidebarTitle: "AnalysisResult"
-description: "AnalysisResult is returned by analyze(). It reports whether the workflow is valid, its diagnostics, normalized form, topological node order, and graph statistics."
+description: "Returned by analyze(), AnalysisResult reports validity, all diagnostics, the normalized workflow, stable topological node order, and graph statistics."
 ---
 
 `AnalysisResult` is the object returned by [`compiler.analyze()`](/lgir/compiler-api#analyze-yaml-target). It tells you whether the workflow is structurally and semantically valid, surfaces every diagnostic the compiler produced, and — when the document is error-free — provides the normalized workflow, a stable topological node order, and a graph statistics summary. You can use `AnalysisResult` to gate further processing: if `ok` is `false`, do not attempt to compile.
@@ -21,7 +21,7 @@ description: "AnalysisResult is returned by analyze(). It reports whether the wo
 </ResponseField>
 
 <ResponseField name="normalized" type="Workflow | undefined">
-  The parsed and normalized workflow document. Present only when `ok` is `true` — if any error-severity diagnostic exists, `normalized` is `undefined`. You can use the normalized form to read back computed defaults and canonical field values.
+  The parsed and normalized workflow document. Present whenever the YAML source parses successfully — including when `ok` is `false` due to validation errors. Only `undefined` when parsing itself fails (for example, a syntax error or security-limit violation). You can use the normalized form to read back computed defaults and canonical field values even when there are blocking diagnostics to fix.
 </ResponseField>
 
 <ResponseField name="nodeOrder" type="string[]" required>

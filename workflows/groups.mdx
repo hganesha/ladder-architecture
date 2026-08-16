@@ -1,7 +1,7 @@
 ---
-title: "Execution Groups: Sequential and Parallel Phases"
+title: "Execution Groups: Bounded Sequential and Parallel Phases"
 sidebarTitle: "Groups"
-description: "Use execution groups to bound a set of nodes into a sequential or parallel phase with a single input, a single output, and an aggregate or serialize exit strategy."
+description: "Use execution groups to bound nodes into a sequential or parallel phase with one external input, one external output, and an aggregate or serialize exit."
 ---
 
 An execution group is a visible bounding container that wraps a set of nodes into a single logical phase. A group has one external input and one external output, runs its member nodes in either sequential or parallel mode, and collects every member's result before releasing any output to the downstream workflow. Groups give you a clean way to express a parallel fan-out and fan-in — or a self-contained sequential pipeline — without scattering individual edges across the canvas. The compiler validates group membership, prevents boundary-crossing edges, and ensures every member's output is accounted for before the group completes.

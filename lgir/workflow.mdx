@@ -63,7 +63,7 @@ The `policies` object is optional. When omitted, the compiler applies the defaul
 </ParamField>
 
 <ParamField path="spec.policies.onFailure" type="string" default="stop">
-  What to do when a node fails. Accepted values are `stop` (halt the workflow immediately and preserve completed outputs) and `continue` (skip the failed node and proceed with any nodes whose dependencies are satisfied). The compiler embeds this value in compiled artifacts.
+  What to do when a node fails. The compiler embeds this value verbatim in compiled artifacts as a named operating rule; it does not validate the string. Recommended values are `stop` (halt the workflow immediately and preserve completed outputs) and `continue` (skip the failed node and proceed with any nodes whose dependencies are satisfied).
 </ParamField>
 
 <ParamField path="spec.policies.requireApprovalFor" type="string[]">

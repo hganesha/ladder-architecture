@@ -1,5 +1,5 @@
 ---
-title: "Visual Macros for Common Workflow Topologies"
+title: "Visual Macros for Scaffolding Common Workflow Topologies"
 sidebarTitle: "Visual Macros"
 description: "Insert Parallel, Pipeline, Reduce, and Verify macros to instantly scaffold multi-node topologies. Macros create canonical nodes and edges directly in LGIR."
 ---
@@ -18,7 +18,7 @@ Building a workflow from individual nodes is precise but can be slow when you kn
     Inserts a sequence of `agent` nodes connected by `data` edges. Each agent's output becomes the next agent's input. Use this macro for linear, multi-step processing where each step transforms or refines the previous step's result.
   </Card>
   <Card title="Reduce" icon="compress">
-    Inserts a parallel phase (a `group` with `execution: parallel`) followed by a `transform` node configured with `operation: aggregate` to collect all member outputs into one object. Use this macro for fan-out research or generation followed by synthesis.
+    Inserts a parallel phase (a `group` with `execution: parallel`) followed by a `transform` node configured with `operation: merge` to combine all member outputs into one object. Use this macro for fan-out research or generation followed by synthesis.
   </Card>
   <Card title="Verify" icon="circle-check">
     Inserts a `draft` agent node, an `evaluate` node, and a bounded `loop` node with `maxIterations: 3` and `onExhausted: stop`. The loop's `exitCondition` references the evaluate node's `passed` output. Use this macro for any critique-and-revise pattern.

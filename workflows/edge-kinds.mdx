@@ -1,7 +1,7 @@
 ---
-title: "Edge Kinds: Connecting Nodes in LGIR Workflows"
+title: "LGIR Edge Kinds: Data, Dependency, and Control Edges"
 sidebarTitle: "Edge Kinds"
-description: "Learn how data, dependency, and control edges connect nodes in an LGIR workflow. Each edge kind carries a different signal and has different validation rules."
+description: "Learn how data, dependency, and control edges connect nodes in an LGIR workflow. Each kind carries a different signal with its own validation rules."
 ---
 
 Edges are the connections between nodes. Every edge has a `from` node, a `to` node, a unique `id`, and a `kind` that determines what it carries and how the compiler validates it. Ladder Graph supports three edge kinds: `data`, `dependency`, and `control`. Choosing the right kind makes your workflow's data flow explicit, helps the compiler catch mistakes before compilation, and produces clearer generated artifacts.

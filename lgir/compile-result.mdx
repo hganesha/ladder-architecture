@@ -1,7 +1,7 @@
 ---
-title: "CompileResult: Artifact Output from the Compiler"
+title: "CompileResult: Compiled Artifact Output from the Compiler"
 sidebarTitle: "CompileResult"
-description: "CompileResult is returned by compile(). It contains the artifact content, filename, MIME type, source hash, version strings, capability report, and diagnostics."
+description: "Returned by compile(), CompileResult carries the artifact text, filename, MIME type, source hash, version strings, capability report, and diagnostics."
 ---
 
 `CompileResult` is the object returned by [`compiler.compile()`](/lgir/compiler-api#compile-yaml-target). When compilation succeeds, it carries everything you need to save or distribute the artifact: the full content string, the suggested file path, the MIME type, a reproducible source hash, version metadata for the compiler and adapter, a capability report describing how the target handles each workflow construct, and any warnings or info diagnostics generated during the process.
@@ -17,7 +17,7 @@ description: "CompileResult is returned by compile(). It contains the artifact c
 </ResponseField>
 
 <ResponseField name="suggestedFilename" type="string" required>
-  The recommended file path for saving the artifact, including the extension. For example: `.agents/skills/my-workflow.md`, `my-workflow.codex.md`, or `my-workflow.ladder.ts`. See the [Suggested File Locations](#suggested-file-locations) table below for the full breakdown by target.
+  The recommended filename for saving the artifact, including the extension. For example: `my-workflow.codex.md`, `my-workflow.hermes.md`, or `my-workflow.ladder.ts`. This is a filename only — no directory prefix is included. See the [Suggested File Locations](#suggested-file-locations) table below for the recommended save directory for each target.
 </ResponseField>
 
 <ResponseField name="mimeType" type="string" required>
@@ -110,7 +110,8 @@ import { promises as fs } from "fs";
 const result = await compiler.compile(yaml, "codex");
 
 if (result.ok) {
-  // Write to the suggested path, e.g., .agents/skills/my-workflow.md
+  // suggestedFilename is a bare filename, e.g., "my-workflow.codex.md"
+  // Place it in the recommended directory for the target (e.g., .agents/skills/)
   await fs.writeFile(result.suggestedFilename, result.content, "utf-8");
   console.log(`Compiled ${result.sourceHash} → ${result.suggestedFilename}`);
   console.log(`Compiler: ${result.compilerVersion}, Adapter: ${result.adapterVersion}`);
@@ -133,15 +134,15 @@ if (result.ok) {
 
 ## Suggested File Locations
 
-The compiler sets `suggestedFilename` based on the workflow name and target. The table below shows the pattern for each target:
+The compiler sets `suggestedFilename` based on the workflow name and target. The value is a filename only — no directory prefix is included. The table below shows the filename pattern and the recommended save directory for each target:
 
-| Target | Suggested path | Notes |
-|---|---|---|
-| `codex` | `.agents/skills/<workflow-name>.codex.md` | Compatible with Agent Skills; reference the file from `AGENTS.md` |
-| `claude` | `.claude/skills/<workflow-name>.claude.md` | Claude Code skill; equivalent Agent Skills-style frontmatter |
-| `hermes` | `~/.hermes/skills/ladder-graph/<workflow-name>/SKILL.md` | Save per-workflow; confirm toolsets and MCP servers separately in `~/.hermes/config.yaml` |
-| `python` | `<workflow-name>.ladder.py` | Importable data module; no runtime dependencies |
-| `typescript` | `<workflow-name>.ladder.ts` | Typed data module with `readyNodes` and `capabilityContract` helpers |
+| Target | `suggestedFilename` | Recommended save directory | Notes |
+|---|---|---|---|
+| `codex` | `<workflow-name>.codex.md` | `.agents/skills/` | Compatible with Agent Skills; reference the file from `AGENTS.md` |
+| `claude` | `<workflow-name>.claude.md` | `.claude/skills/` | Claude Code skill; equivalent Agent Skills-style frontmatter |
+| `hermes` | `<workflow-name>.hermes.md` | `~/.hermes/skills/ladder-graph/<workflow-name>/` | Save as `SKILL.md` inside the workflow directory; confirm toolsets and MCP servers separately |
+| `python` | `<workflow-name>.ladder.py` | Your project source tree | Importable data module; no runtime dependencies |
+| `typescript` | `<workflow-name>.ladder.ts` | Your project source tree | Typed data module with `readyNodes` and `capabilityContract` helpers |
 
 <Note>
   Compilation is blocked by any error-severity diagnostic — always check `result.ok` before reading `result.content`. If `ok` is `false`, `content` is an empty string and `diagnostics` will tell you what needs to be fixed. Run [`compiler.analyze(yaml, target)`](/lgir/compiler-api#analyze-yaml-target) first to surface and resolve all errors before calling `compile`.

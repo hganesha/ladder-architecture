@@ -1,5 +1,5 @@
 ---
-title: "Editing Node Properties with the Inspector"
+title: "Editing Node Properties in the Ladder Graph Inspector"
 sidebarTitle: "Inspector"
 description: "Use the inspector panel to edit a node's name, role, prompt, input and output schemas, skills, connectors, permissions, and capability customizations."
 ---
@@ -92,13 +92,18 @@ To customize a capability:
   </Step>
 </Steps>
 
+## Condition Node (Basics Tab)
+
+The `condition` node exposes one additional field in the **Basics** tab alongside Title and Summary:
+
+**Condition** — The boolean expression that selects which branch to follow (for example, `result.passed == true`). Each condition node is pre-configured with two branches — **Pass** (when `true`) and **Revise** (when `false`) — which you can rename in YAML directly.
+
 ## Config Fields (Advanced Tab)
 
 The **Advanced** tab shows kind-specific configuration fields in addition to the read-only node ID:
 
 | Node kind | Available config fields |
 |---|---|
-| `condition` | Expression (the boolean expression that selects a branch) |
 | `loop` | Body node IDs, Exit condition, Maximum iterations (1–100), On exhausted (Stop / Warn and return best / Continue) |
 | `join` | Join policy (All successful / All settled / First result) |
 | `transform` | Operation (select / rename / merge / filter / deduplicate / sort / slice), Declarative expression |

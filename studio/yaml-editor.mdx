@@ -1,7 +1,7 @@
 ---
-title: "Editing LGIR YAML Directly in the Studio"
+title: "Editing LGIR YAML Directly in the Ladder Graph Studio"
 sidebarTitle: "YAML Editor"
-description: "Use the built-in CodeMirror YAML editor to author or fine-tune your LGIR workflow document. Changes sync live to the canvas."
+description: "Use the built-in CodeMirror YAML editor to author or fine-tune your LGIR workflow document. Changes sync live to the canvas in real time."
 ---
 
 The YAML editor gives you direct, text-level access to the LGIR document that drives your workflow. Every Ladder Graph workflow is stored as a YAML file conforming to the `ladder.dev/v1alpha1` schema. While the canvas and inspector let you work visually, the YAML editor is always available for fine-grained authoring, bulk edits, copy-paste from external sources, or situations where you want precise control over field order and values.
@@ -42,9 +42,11 @@ Ladder Graph saves your work to **IndexedDB** in the browser automatically:
 
 You never lose a valid document by making an invalid edit. The status bar shows **"Local draft"** when unsaved changes are present and **"Saved locally HH:MM"** once the latest valid document is persisted.
 
-## Format Button
+## Format Operation
 
-Click the **Format** button in the compiler drawer (bottom of the studio) to reformat the entire YAML document with canonical indentation — two-space offsets, normalized key order within each mapping, and consistent list formatting. Formatting is non-destructive: it preserves all field values and never removes valid content.
+The studio exposes a **Format** action that reformats the entire YAML document with canonical indentation — two-space offsets, normalized key order within each mapping, and consistent list formatting. Formatting is non-destructive: it preserves all field values and never removes valid content.
+
+The format operation is implemented by the same Rust/WASM compiler worker that handles analysis and compilation. When invoked, the worker returns a reformatted document and the editor replaces the current source with the result. Formatting only runs on valid YAML; if the document contains syntax errors the operation has no effect.
 
 ## Schema Validation
 

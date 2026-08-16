@@ -1,5 +1,5 @@
 ---
-title: "Using the Node Palette to Build Workflows"
+title: "Using the Palette to Add and Configure Workflow Nodes"
 sidebarTitle: "Palette"
 description: "Browse, search, and drag node kinds from the palette to the canvas. The palette groups nodes by category: Flow, Work, Data, and Control."
 ---
@@ -61,7 +61,7 @@ Every node kind arrives on the canvas pre-configured with sensible defaults so y
 | Agent | Role: `"Workflow specialist"`, default prompt, empty `outputSchema: {type: object}` |
 | Evaluate | Role: `"Independent evaluator"`, evaluation prompt, `outputSchema` with `score`, `passed`, and `reasons` |
 | Transform | `operation: select`, `expression: $.result` |
-| Condition | Two branches: **Pass** (`when: true`) and **Revise** (`when: false`) |
+| Condition | `expression: result.passed == true`, two branches: **Pass** (`when: "true"`) and **Revise** (`when: "false"`) |
 | Join | `join: all` (wait for all successful branches) |
 | Loop | `maxIterations: 3`, `exitCondition: evaluation.passed == true`, `onExhausted: stop` |
 | Group | `execution: parallel`, `exit: aggregate`, empty `members` list |

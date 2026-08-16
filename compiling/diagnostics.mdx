@@ -1,7 +1,7 @@
 ---
-title: "Understanding and Fixing Compiler Diagnostics"
+title: "Compiler Diagnostics: Codes, Severity, and Repairs"
 sidebarTitle: "Diagnostics"
-description: "Ladder Graph's compiler emits diagnostics with stable codes, severity levels, and safe repair suggestions. Errors block compilation; warnings and info do not."
+description: "Compiler diagnostics carry a stable code, severity level, and optional one-click repair. Errors block compilation; warnings and info diagnostics do not."
 ---
 
 Diagnostics are the compiler's precise, structured way of telling you what is wrong with your workflow, what might produce unexpected output, or what you should know about how a construct is handled by your chosen target. Every diagnostic carries a stable code you can reference, a severity that determines whether compilation is blocked, and — when a safe automated repair exists — a structured fix you can apply with a single click.
@@ -14,7 +14,7 @@ Each diagnostic the compiler emits is a structured object with the following fie
 |-------|------|-------------|
 | `code` | string | Stable identifier, e.g. `LG120`. Codes are stable across compiler versions so you can search, filter, and bookmark them. |
 | `severity` | `error` \| `warning` \| `info` | Determines whether the diagnostic blocks compilation. |
-| `path` | string | YAML path to the problematic element, e.g. `spec.nodes[2].config.maxIterations`. Use this to jump directly to the source location. |
+| `path` | string | JSON Pointer to the problematic element, e.g. `/spec/nodes/2/config/maxIterations`. Use this to jump directly to the source location. |
 | `nodeId` | string (optional) | The ID of the affected node, if the diagnostic is node-scoped. |
 | `edgeId` | string (optional) | The ID of the affected edge, if the diagnostic is edge-scoped. |
 | `message` | string | Human-readable explanation of the issue. |

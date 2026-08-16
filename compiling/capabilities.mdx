@@ -1,7 +1,7 @@
 ---
 title: "Capability Catalog: Skills, Connectors, and Permissions"
 sidebarTitle: "Capabilities"
-description: "Assign skills, tools, connectors, and permissions to agent and tool nodes. The capability catalog adapts to your selected target and stores customizations in LGIR."
+description: "Assign skills, tools, connectors, and permissions to your nodes. The catalog adapts to your selected target, and every declaration is stored in LGIR."
 ---
 
 Capabilities are the declarations that communicate to your agent harness what a node needs in order to run. When you assign a skill to an agent node, you are not installing that skill — you are documenting a requirement so that the harness, the skill file, and the operator reading the compiled artifact all have a shared understanding of what must be available. Capability declarations travel with the artifact; every compiled Markdown file lists them explicitly, and every code module exposes them as inert data.
@@ -102,7 +102,7 @@ capabilities:
     - read
     - edit
   connectors:
-    - openrouter-image-generation
+    - mcp:github
   permissions:
     - workspace-write
   customizations:

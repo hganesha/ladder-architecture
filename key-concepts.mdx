@@ -1,7 +1,7 @@
 ---
-title: "Key Concepts: LGIR, Nodes, Edges, and Targets"
+title: "Key Concepts: LGIR, Node Kinds, Edges, and Compiler Targets"
 sidebarTitle: "Key Concepts"
-description: "Understand the LGIR workflow format, the 11 node kinds, three edge kinds, compilation targets, and how the Rust/WASM compiler validates your graph."
+description: "Understand the LGIR workflow format, the 12 node kinds, three edge kinds, compilation targets, and how the Rust/WASM compiler validates your graph."
 ---
 
 Ladder Graph is built around a small set of concepts that compose into arbitrarily complex agent workflows. Understanding them helps you design graphs that validate cleanly, compile to accurate artifacts, and communicate intent to anyone who reads the generated output. This page covers the canonical workflow format, every node and edge kind, the compiler pipeline, compilation targets, diagnostics, and the offline storage model.
@@ -36,13 +36,15 @@ You can also set `metadata.title`, `metadata.description`, `metadata.version`, a
 
 The Rust engine is the semantic authority for LGIR. The JSON Schema at `public/schema/lgir-v1alpha1.schema.json` serves as a portable editor contract, but schema validation alone cannot enforce graph topology, structured loop bounds, group ownership, or deterministic ordering—the Rust compiler handles all of that.
 
+**CST patching.** When you make a change on the canvas or in the inspector, the studio patches the live YAML document using a CST (concrete syntax tree) model—it edits only the affected tokens rather than serializing the entire document from scratch. This preserves your comments, key ordering, and formatting, and it means canvas undo/redo maps directly to individual document edits. When your YAML has a syntax error, the canvas becomes read-only and the studio retains `lastValidYaml` as a recoverable snapshot so no work is lost.
+
 <Note>
   LGIR imports are capped at 2 MB and 1,000 nodes. Custom YAML tags, anchors, aliases, and external references are always rejected. Imported YAML is data—it is never executed.
 </Note>
 
 ## Node Kinds
 
-Ladder Graph defines **11 canonical node kinds** organized into three categories: Flow, Work, and Control. You place nodes on the canvas from the palette or insert them by editing LGIR directly.
+Ladder Graph defines **12 canonical node kinds** organized into four categories: Flow, Work, Data, and Control. You place nodes on the canvas from the palette or insert them by editing LGIR directly.
 
 | Kind | Category | Description |
 |---|---|---|
@@ -128,6 +130,8 @@ YAML bytes
 
 If the browser's WebAssembly runtime is unavailable, the compiler falls back to a TypeScript parity implementation so your work remains recoverable.
 
+The compiler exposes four operations through the Web Worker client: `analyze(yaml, target?)` for validation without compilation, `compile(yaml, target)` for full compilation, `format(yaml)` to canonically format a document, and `migrate(yaml, toVersion)` to upgrade a document to a newer LGIR version. See the [Compiler API reference](/lgir/compiler-api) for signatures, return types, and runtime detection.
+
 ## Compilation Targets
 
 Each target produces a single self-contained artifact optimized for a specific agent harness.
@@ -199,3 +203,12 @@ Autosave runs continuously and keeps valid and invalid revisions separate. The s
 </Warning>
 
 The studio requests **persistent browser storage** only after an explicit user action, and it always shows you your current quota and persistence state so you know exactly how much space your projects are using.
+
+<CardGroup cols={2}>
+  <Card title="Compiler API" icon="code" href="/lgir/compiler-api">
+    Full signatures for <code>analyze</code>, <code>compile</code>, <code>format</code>, and <code>migrate</code>, plus runtime detection and typed return values.
+  </Card>
+  <Card title="LGIR Reference" icon="file-code" href="/lgir/overview">
+    Complete LGIR schema reference: every field, policy option, node configuration, and edge contract.
+  </Card>
+</CardGroup>

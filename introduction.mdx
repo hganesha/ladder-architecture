@@ -1,7 +1,7 @@
 ---
-title: "Ladder Graph: Design and Compile Agent Workflows"
+title: "Ladder Graph: Offline-First Visual Workflow Compiler"
 sidebarTitle: "Introduction"
-description: "Ladder Graph is an offline-first visual compiler for agent workflows. Design on a canvas, validate with a Rust engine, and compile to Codex, Claude, Hermes, Python, or TypeScript."
+description: "Offline-first agent workflow compiler. Design visually or in YAML, validate with Rust/WASM, and compile to Codex, Claude, Hermes, Python, or TypeScript."
 ---
 
 Ladder Graph is an open-source, offline-first visual compiler for designing, validating, and compiling deterministic agent workflows. You sketch a workflow on a canvas—or write it directly in YAML—and the built-in Rust/WASM engine validates your graph, then compiles it into a single self-contained artifact you can drop into your agent harness. Ladder Graph is a **compiler**, not a runtime: it never calls a model provider, executes a shell command, or stores credentials. There are no accounts to create, no telemetry, and no internet connection required after the first page load.
@@ -15,7 +15,7 @@ The studio ships with **16 outcome-led starter templates** spanning software eng
 Beyond the canvas, you also get:
 
 - A **YAML editor** with real-time patching synchronized to the canvas, so you can work in either view or split them side by side.
-- A **searchable palette** of 11 canonical node kinds organized by category.
+- A **searchable palette** of 12 canonical node kinds organized by category.
 - An **inspector** for editing every node's name, role, prompt, skills, connectors, output schema, and configuration.
 - A **compiler drawer** with live validation diagnostics and one-click compilation to your chosen target.
 - **68 editable role templates** covering core, software, security, and architecture/design specialists.
@@ -65,6 +65,20 @@ Once your workflow passes validation, you compile it to one of five targets. Eac
     There are no accounts, no analytics, and no usage tracking of any kind. With telemetry excluded, adoption is assessed through moderated studies, repository activity, and opt-in feedback only.
   </Card>
 </CardGroup>
+
+## Architecture
+
+Ladder Graph has three deliberately narrow layers that keep the UI responsive and compilation deterministic.
+
+**Rust/WASM compiler core.** All parsing, semantic validation, normalization, topological ordering, source hashing, and target code generation runs inside a compiled Rust/WebAssembly module. The WASM module is committed to the repository so the application never needs to fetch or build it at runtime.
+
+**Dedicated Web Worker.** The compiler runs in a dedicated Web Worker, separate from the browser's UI thread. The main application posts messages to the worker and receives typed `AnalysisResult`, `CompileResult`, `FormatResult`, or `MigrationResult` responses. This keeps validation and compilation fully off the UI thread—large workflows analyze and compile without blocking the canvas or editor.
+
+**TypeScript parity fallback.** If the WebAssembly runtime cannot initialize—for example in an environment where `WebAssembly` is restricted—the worker automatically falls back to a TypeScript parity implementation. You interact only with the compiler client; the runtime selection is transparent, and your work remains recoverable regardless of which engine is active.
+
+**LGIR YAML as canonical source of truth.** LGIR YAML is the single authoritative representation of your workflow. Canvas actions patch the YAML document using a CST (concrete syntax tree) patching model rather than maintaining a separate graph database. This means the persisted file is always valid YAML, canvas undo/redo maps directly to document edits, and compiled artifacts are fully reproducible from the file alone—no hidden studio state is required.
+
+**IndexedDB and OPFS persistence.** Project metadata, active YAML, last-valid YAML, targets, and revision indexes live in IndexedDB. Revision bodies prefer OPFS for efficiency and fall back to IndexedDB automatically. Autosave keeps valid and invalid revisions distinct, and the studio prunes to the 30 most recent revisions per project.
 
 <Note>
   Ladder Graph never contacts model providers or executes agents of any kind. Catalog entries for skills, connectors, and OpenRouter profiles are authoring suggestions—not an inventory of installed capabilities. Credentials must never be stored in LGIR YAML, and compiled artifacts must be verified against current provider documentation before use in production.

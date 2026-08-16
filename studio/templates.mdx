@@ -1,5 +1,5 @@
 ---
-title: "Starting from a Template in Ladder Graph"
+title: "Starting from a Starter Template in Ladder Graph Studio"
 sidebarTitle: "Templates"
 description: "Choose from 16 outcome-led starter workflows and 68 role templates to jumpstart your workflow design. Templates are fully editable and stored locally."
 ---
@@ -46,25 +46,25 @@ The library organizes its 16 starter workflows into nine areas, accessible from 
   </Card>
 </CardGroup>
 
-## Core Shapes
+## Foundational Shapes
 
-The three foundational orchestration shapes appear in the **Core patterns** area and are used as building blocks in many of the more complex area templates:
+Three templates across the library encode the foundational orchestration patterns that many more complex workflows build on. Each is available in its respective area:
 
-### Draft → Critique → Bounded Revision
+### Draft → Critique → Bounded Revision *(Core patterns)*
 
-A **Create draft** agent produces the first version. An **Independent critique** evaluator scores it against the contract and returns defects with evidence. A **Targeted revision** agent addresses only the evidenced defects. A **Quality loop** node (with `maxIterations: 3` and `onExhausted: stop`) bounds the critique-revise cycle until the evaluator passes. The loop exits on `critique.passed == true` and feeds the **Approved deliverable** output node.
+Found in the **Core patterns** area. A **Create draft** agent produces the first version. An **Independent critique** evaluator scores it against the contract and returns defects with evidence. A **Targeted revision** agent addresses only the evidenced defects. A **Quality loop** node (with `maxIterations: 3` and `onExhausted: stop`) bounds the critique-revise cycle until the evaluator passes. The loop exits on `critique.passed == true` and feeds the **Approved deliverable** output node.
 
 Use this shape any time you need a deliverable that must meet an explicit quality threshold — document generation, code authoring, design iteration, or analysis refinement.
 
-### Parallel Implementation and Risk Review → Join
+### Parallel Implementation and Risk Review → Join *(Software engineering)*
 
-A **Feature brief** input fans out simultaneously to an **Implementation lead** (delivery and architecture) and a **Risk reviewer** (security and reliability). Both agents work independently in parallel. A **Review barrier** join node (`join: all`) waits for both branches to complete before passing their combined outputs to a **Decision synthesis** agent. The synthesized plan flows to the **Reviewed plan** output.
+Found in the **Software engineering** area. A **Feature brief** input fans out simultaneously to an **Implementation lead** (delivery and architecture) and a **Risk reviewer** (security and reliability). Both agents work independently in parallel. A **Review barrier** join node (`join: all`) waits for both branches to complete before passing their combined outputs to a **Decision synthesis** agent. The synthesized plan flows to the **Reviewed plan** output.
 
 Use this shape when independent delivery and risk perspectives must both be captured and reconciled before acting. The parallel structure prevents the risk review from being skipped or condensed.
 
-### Evidence Research → Synthesis → Evaluation
+### Evidence Research → Synthesis → Evaluation *(Research)*
 
-A **Research question** input fans out to three parallel agents: **Primary sources**, **Contradictory evidence**, and **Recency check**. An **Evidence barrier** join (`join: allSettled`) collects all three branches. A **Cited synthesis** agent writes only from supported claims, placing source identifiers after each factual statement. A **Source-quality gate** evaluator (`threshold: 0.9`) passes only when every material claim is backed by the supplied evidence. The result flows to the **Verified answer** output.
+Found in the **Research** area. A **Research question** input fans out to three parallel agents: **Primary sources**, **Contradictory evidence**, and **Recency check**. An **Evidence barrier** join (`join: allSettled`) collects all three branches. A **Cited synthesis** agent writes only from supported claims, placing source identifiers after each factual statement. A **Source-quality gate** evaluator (`threshold: 0.9`) passes only when every material claim is backed by the supplied evidence. The result flows to the **Verified answer** output.
 
 Use this shape for any research task where claim-level sourcing and coverage of contradictory evidence are non-negotiable.
 

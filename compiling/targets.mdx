@@ -1,7 +1,7 @@
 ---
-title: "Compilation Targets: Codex, Claude, Hermes, Python, TypeScript"
+title: "Compile to Codex, Claude, Hermes, Python, or TypeScript"
 sidebarTitle: "Targets"
-description: "Choose from five compilation targets to generate a self-contained artifact. Markdown targets produce agent skill files; code targets produce typed data modules."
+description: "Ladder Graph supports five targets. Choose Codex, Claude, or Hermes for Markdown skill files, or Python/TypeScript for deterministic typed data modules."
 ---
 
 A **compilation target** tells Ladder Graph which adapter to use when converting your LGIR workflow into a deployable artifact. The target you choose determines the artifact's format, its suggested filename, the MIME type reported by the compiler, and the capability suggestions you see in the inspector. Selecting the right target for your harness is the single decision that shapes everything downstream — from how loop bounds are expressed to which OpenRouter connectors appear in the catalog.
@@ -44,7 +44,7 @@ Code targets produce deterministic, importable data modules. Unlike Markdown tar
     - `WORKFLOW` — the normalized workflow dict
     - `NODE_ORDER` — nodes in stable topological order
     - `DEPENDENCIES` — per-node upstream dependency lists
-    - `CAPABILITY_MANIFEST` — per-node skill, connector, tool, and permission declarations
+    - `CAPABILITY_TEMPLATES` — per-node skill, connector, tool, and permission declarations
     - `ready_nodes(completed)` — a pure helper that returns the next executable node IDs given a set of completed IDs
     - `capability_contract(node_id)` — returns a node's declarative templates without invoking them
   </Card>

@@ -13,7 +13,7 @@ Every artifact carries the following properties regardless of target:
 | Property | Description |
 |----------|-------------|
 | `content` | The full text of the artifact — the Markdown skill file or the data module source. |
-| `suggestedFilename` | The recommended file path for this artifact, e.g. `.agents/skills/my-workflow.md` for Codex or `my-workflow.ladder.ts` for TypeScript. |
+| `suggestedFilename` | The recommended filename for this artifact, e.g. `my-workflow.codex.md` for Codex or `my-workflow.ladder.ts` for TypeScript. Move the downloaded file to the directory your harness expects. |
 | `mimeType` | `text/markdown` for Codex, Claude, and Hermes; `text/x-python` for Python; `text/typescript` for TypeScript. |
 | `sourceHash` | SHA-256 of the normalized YAML. Identical inputs always produce identical hashes. Use this to verify reproducibility or detect drift. |
 | `compilerVersion` | The version of the Ladder Graph Rust/WASM compiler core that produced this artifact. |
@@ -108,9 +108,9 @@ export const DEPENDENCIES: Record<string, string[]> = {
   revise: ["critique"],
 };
 
-export function readyNodes(completed: ReadonlySet<string>): readonly string[] {
+export function readyNodes(completed: ReadonlySet<string>): readonly LadderNodeId[] {
   return NODE_ORDER.filter(
-    (id) => !completed.has(id) && DEPENDENCIES[id]?.every((dep) => completed.has(dep))
+    (nodeId) => !completed.has(nodeId) && DEPENDENCIES[nodeId].every((dep) => completed.has(dep))
   );
 }
 ```
@@ -151,5 +151,5 @@ It is important to understand the boundaries of what a compiled artifact is and 
 - **Never executed by Ladder Graph itself.** Ladder Graph compiles artifacts; it does not run them. The artifact is your responsibility to deploy and execute in your own environment.
 
 <Tip>
-Place Markdown artifacts in the directory your harness expects. For Codex, that is `.agents/skills/<name>.md` (or reference it from `AGENTS.md`). For Claude Code, use `.claude/skills/<name>.md`. For Hermes Agent, use `~/.hermes/skills/ladder-graph/<workflow>/SKILL.md`. The `suggestedFilename` in the artifact properties already encodes the correct path for each target.
+Place Markdown artifacts in the directory your harness expects. For Codex, save to `.agents/skills/<name>.md` (or reference it from `AGENTS.md`). For Claude Code, use `.claude/skills/<name>.md`. For Hermes Agent, use `~/.hermes/skills/ladder-graph/<workflow>/SKILL.md`. The `suggestedFilename` gives you the recommended filename (e.g. `my-workflow.codex.md`); move the downloaded file to the appropriate directory yourself.
 </Tip>

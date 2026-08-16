@@ -1,7 +1,7 @@
 ---
-title: "LGIR v1alpha1: The Ladder Graph Workflow Format"
+title: "LGIR v1alpha1: Ladder Graph Workflow Format Reference"
 sidebarTitle: "LGIR Overview"
-description: "LGIR (Ladder Graph Intermediate Representation) is the canonical YAML format for Ladder Graph workflows. Learn its structure, versioning, and portability guarantees."
+description: "LGIR is the canonical YAML format for Ladder Graph workflows. Learn its structure, compiler pipeline, versioning, and portability guarantees."
 ---
 
 LGIR (Ladder Graph Intermediate Representation) is the plain-YAML document format that Ladder Graph uses as its single source of truth for agent workflows. Every canvas action, inspector edit, and template import produces or modifies an LGIR document. When you compile a workflow to Codex, Claude, Hermes Agent, Python, or TypeScript, the compiler reads LGIR as its input and always produces the same artifact for the same document. LGIR is designed to be readable, diffable, and portable: it lives in version control, travels as a file, and requires no special tooling to open.
@@ -62,6 +62,25 @@ The TypeScript types in `src/types.ts` mirror the compiler's result boundary. Th
 <Tip>
   If WebAssembly cannot initialize in a browser, the worker falls back to a TypeScript parity compiler so your projects remain recoverable. Production builds always prefer the Rust module.
 </Tip>
+
+## Compiler Pipeline
+
+When you validate or compile a workflow, the Rust/WASM core processes your LGIR document through the following stages in order:
+
+```text
+YAML bytes
+  → security limits and parse
+  → typed LGIR document
+  → ID/contract/control-flow validation
+  → deterministic topological order
+  → source hash and capability analysis
+  → Codex/Claude/Hermes instruction adapter or Python/TypeScript data adapter
+  → one self-contained Markdown or source-code artifact
+```
+
+Each stage either advances the document or produces a diagnostic and stops. Security limits (2 MB cap, no custom tags, no anchors or aliases, no external `$ref` URLs) run first so that malformed input never reaches the validation stage. Validation catches structural errors — duplicate IDs, missing edge endpoints, unsupported node kinds, cycle detection — before any output is generated. The topological ordering stage assigns a stable, deterministic node sequence that all compiled artifacts share. The final adapter stage generates one artifact per target: Markdown skill files for Codex, Claude, and Hermes Agent, or typed data modules for Python and TypeScript.
+
+Compilation is blocked by any error-severity diagnostic. Warnings do not block compilation but do appear in the `diagnostics` array of the result.
 
 ## Determinism
 

@@ -1,14 +1,14 @@
 ---
-title: "Get Started with Ladder Graph in 10 Minutes"
+title: "Quickstart: Build Your First Ladder Graph Workflow"
 sidebarTitle: "Quick Start"
-description: "Learn how to open a workflow template, customize nodes, validate the graph, and compile a self-contained artifact for your agent harness in under ten minutes."
+description: "Open a starter template, customize nodes and prompts, validate the graph, and compile a self-contained artifact for your agent harness in ten minutes."
 ---
 
 This guide walks you through the complete primary journey in Ladder Graph: from opening the studio to holding a compiled, ready-to-use artifact. You will open a starter template, explore and customize nodes, check the synchronized LGIR YAML, run validation, and compile your first target. The whole journey takes under ten minutes.
 
 <Steps>
   <Step title="Open the Studio">
-    Navigate to the Ladder Graph PWA in any modern browser. No installation, account, or internet connection is required after the first load—the studio is a Progressive Web App that caches its shell, fonts, schema, Web Worker, and WebAssembly module on first visit and works fully offline from that point on.
+    Navigate to the Ladder Graph PWA in any modern browser. No installation, account, or internet connection is required after the first load—the studio is a Progressive Web App that caches its shell, fonts, schema, Web Worker, and WebAssembly module on first visit and works fully offline from that point on. Compilation runs in a dedicated Web Worker using the Rust/WASM engine; if WebAssembly cannot initialize in your environment, the worker falls back to a TypeScript parity implementation automatically so your work remains recoverable.
 
     To run it locally instead:
 

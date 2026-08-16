@@ -1,5 +1,5 @@
 ---
-title: "LGIR Node Schema: Fields, Kinds, and Config"
+title: "LGIR Node Reference: Fields, Kinds, and Kind Config"
 sidebarTitle: "Nodes"
 description: "Complete field reference for LGIR nodes. Covers shared fields (id, kind, name, prompt, capabilities) and kind-specific config for all 12 node types."
 ---
@@ -56,7 +56,7 @@ Every node, regardless of kind, supports the following fields.
 
 ## Capabilities Object
 
-The `capabilities` object on an `agent`, `evaluate`, or `tool` node declares what that node needs from its runtime environment. The studio uses the declared target (Codex, Claude, Hermes Agent, Python, or TypeScript) to suggest relevant catalog entries and highlight recommendations inferred from the node's role.
+The `capabilities` object is a shared field available on every node kind. In practice it is most relevant on `agent`, `evaluate`, and `tool` nodes, where it declares the skills, tools, connectors, and permissions the node needs from its runtime environment. The studio uses the declared target (Codex, Claude, Hermes Agent, Python, or TypeScript) to suggest relevant catalog entries and highlight recommendations inferred from the node's role.
 
 <ParamField path="capabilities.skills" type="string[]">
   A list of skill identifiers this node requires, for example `["implementation", "code-review"]`. In compiled Markdown, skills appear under **Required skills**. In Python and TypeScript modules, they appear in the capability manifest for that node.

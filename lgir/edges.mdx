@@ -20,7 +20,7 @@ Edges define the relationships between nodes in an LGIR workflow. Every edge con
   The ID of the target node. Must reference an existing node in `spec.nodes`. An unknown ID produces a `LG142` error.
 </ParamField>
 
-<ParamField path="kind" type="EdgeKind" required>
+<ParamField path="kind" type="EdgeKind" default="dependency">
   The edge type. Must be `data`, `dependency`, or `control`. An unknown value produces a `LG143` error. When `kind` is omitted, the compiler defaults to `dependency`.
 </ParamField>
 
@@ -139,13 +139,13 @@ edges:
     kind: data
     contract: "{ draft: string; wordCount: number }"
 
-  # Data: critic passes its scored review back to the writer
-  # when the loop body repeats.
-  - id: e-critic-writer
+  # Dependency: critic result feeds the revision loop.
+  # Repeated work is modelled as a loop node — direct back-edges
+  # (critic → writer) are invalid and produce a LG150 cycle error.
+  - id: e-critic-loop
     from: critic
-    to: writer
-    kind: data
-    contract: "{ score: number; feedback: string[] }"
+    to: revise-loop
+    kind: dependency
 
   # Control: when the quality gate evaluates to "pass",
   # execution continues to the approval node.
